@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mersin Bisiklet Rehberi | Akıllı Sürüş Paneli</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    
+    <style>
+        :root {
+            --primary-color: #27ae60;
+            --dark-bg: rgba(44, 62, 80, 0.9);
+        }
+
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #map { height: 100vh; width: 100%; z-index: 1; }
+
+        /* Üst Panel: Başlık */
+        .header-panel {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; background: white; padding: 10px 30px;
+            border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            text-align: center; border-bottom: 3px solid var(--primary-color);
+        }
+        .header-panel h1 { margin: 0; font-size: 18px; color: #333; letter-spacing: 1px; }
+        .header-panel span { font-size: 11px; color: var(--primary-color); font-weight: bold; text-transform: uppercase; }
+
+        /* Sağ Panel: Saat ve Hava Durumu */
+        .info-panel {
+            position: absolute; top: 20px; right: 20px; z-index: 1000;
+            background: var(--dark-bg); color: white; padding: 15px;
+            border-radius: 15px; min-width: 120px; text-align: center;
+            backdrop-filter: blur(5px);
+        }
+        #clock { font-size: 22px; font-weight: bold; color: #2ecc71; margin-bottom: 5px; }
+        .weather-box { border-top: 1px solid #555; pt-5; margin-top: 5px; font-size: 13px; }
+        .temp { font-size: 20px; color: #f1c40f; font-weight: bold; }
+
+        /* Sol Alt: Kampanya Butonu */
+        .campaign-btn {
+            position: absolute; bottom: 30px; left: 20px; z-index: 1000;
+            background: #e67e22; color: white; padding: 12px 25px;
+            border-radius: 50px; text-decoration: none; font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: transform 0.2s; display: flex; align-items: center; gap: 10px;
+        }
+        .campaign-btn:hover { transform: scale(1.05); background: #d35400; }
+
+        /* Rota Paneli Mobil Düzenleme */
+        .leaflet-routing-container { width: 300px !important; max-height: 400px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+
+    <div class="header-panel">
+        <h1>MERSİN BİSİKLET REHBERİ</h1>
+        <span>Mühendislik ve Topluluk Projesi</span>
+    </div>
+
+    <div class="info-panel">
+        <div id="clock">00:00:00</div>
+        <div class="weather-box">
+            <span>Mersin</span><br>
+            <span class="temp" id="temp">22°C</span><br>
+            <span id="weather-desc">Sürüşe Uygun</span>
+        </div>
+    </div>
+
+    <a href="mailto:iletisim@mersinbisiklet.com" class="campaign-btn">
+        <span>🚲</span> Mersin'i Beraber Çizelim! (Hata Bildir)
+    </a>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
+    <script>
+        // 1. Haritayı Mersin (Adnan Menderes Bulvarı Civarı) Odaklı Başlat
+        const map = L.map('map').setView([36.7750, 34.5880], 13);
+
+        // 2. Şık Harita Katmanı (CartoDB Voyager)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        // 3. Rota Oluşturma (Navigasyon)
+        L.Routing.control({
+            waypoints: [
+                L.latLng(36.7725, 34.5770), // Mezitli
+                L.latLng(36.7920, 34.6060)  // Marina
+            ],
+            router: L.Routing.osrm({ profile: 'bicycle' }),
+            language: 'tr',
+            lineOptions: { styles: [{ color: '#27ae60', weight: 7 }] }
+        }).addTo(map);
+
+        // 4. Senin OSM'ye Çizdiğin Yolları ve Tamircileri Getir (Overpass API)
+        async function fetchOSMData() {
+            // Sadece bisiklet tamircilerini haritaya nokta olarak ekler
+            const query = `[out:json];node["shop"="bicycle"](36.7,34.4,36.9,34.8);out;`;
+            const url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query);
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                data.elements.forEach(poi => {
+                    L.marker([poi.lat, poi.lon])
+                     .addTo(map)
+                     .bindPopup(`<b>${poi.tags.name || 'Bisiklet Tamircisi'}</b><br>Ücretsiz Rehber Kaydı`);
+                });
+            } catch (e) { console.error("Veri çekilemedi:", e); }
+        }
+        fetchOSMData();
+
+        // 5. Canlı Saat Fonksiyonu
+        function startClock() {
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('clock').innerText = now.toLocaleTimeString('tr-TR');
+            }, 1000);
+        }
+        startClock();
+
+        // 6. Basit Hava Durumu Simülasyonu (Veya API Bağlantısı)
+        function updateWeather() {
+            // Buraya gerçek bir OpenWeatherMap API bağlanabilir
+            document.getElementById('temp').innerText = "24°C";
+            document.getElementById('weather-desc').innerText = "Açık Gökyüzü";
+        }
+        updateWeather();
+    </script>
+</body>
+</html>
