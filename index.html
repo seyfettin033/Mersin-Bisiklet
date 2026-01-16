@@ -1,1 +1,80 @@
+<<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cami Haritası | Veri ve Bilgi Platformu</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body { margin: 0; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; }
+        #header { background: #2c3e50; color: white; padding: 15px; text-align: center; }
+        #vakitler { background: #ecf0f1; display: flex; justify-content: space-around; padding: 10px; font-size: 0.8em; }
+        #map { flex-grow: 1; width: 100%; }
+        .vakit-kutu { text-align: center; }
+        .vakit-saat { font-weight: bold; display: block; }
+        /* Harita üzerindeki butonlar */
+        .filter-ctrl { background: white; padding: 10px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body>
 
+<div id="header">
+    <h1 style="margin:0; font-size: 1.2em;">Cami Haritası</h1>
+    <small id="sehir-adi">Konum Aranıyor...</small>
+</div>
+
+<div id="vakitler">
+    <div class="vakit-kutu">İmsak<span class="vakit-saat">05:40</span></div>
+    <div class="vakit-kutu">Öğle<span class="vakit-saat">12:50</span></div>
+    <div class="vakit-kutu">İkindi<span class="vakit-saat">15:45</span></div>
+    <div class="vakit-kutu">Akşam<span class="vakit-saat">18:10</span></div>
+    <div class="vakit-kutu">Yatsı<span class="vakit-saat">19:30</span></div>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+    // Haritayı başlat (Mersin/Hatay bölgesi odaklı)
+    var map = L.map('map').setView([36.5, 35.5], 8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    // Semboller (Yeşil: Tamam, Turuncu: İnşaat, Kırmızı: İsimsiz)
+    function style(feature) {
+        let renk = "red";
+        if (feature.properties.name) renk = "green";
+        if (feature.properties.construction) renk = "orange";
+        return { color: renk };
+    }
+
+    // Basit bir örnek veri (İleride Overpass API ile otomatik gelecek)
+    var camiler = [
+        { "name": "Örnek Cami", "lat": 36.81, "lon": 34.63, "status": "active" },
+        { "name": "İnşaat Halindeki Cami", "lat": 36.20, "lon": 36.15, "status": "construction" }
+    ];
+
+    camiler.forEach(function(cami) {
+        var renk = cami.status === "construction" ? "orange" : "green";
+        var marker = L.circleMarker([cami.lat, cami.lon], { color: renk, radius: 8, fillOpacity: 0.8 }).addTo(map);
+        
+        var popupText = `<b>${cami.name}</b><br>Durum: ${cami.status === "construction" ? "Yapımı Devam Ediyor" : "İbadete Açık"}`;
+        popupText += `<br><button onclick="alert('Fotoğraf yükleme sayfasına yönlendiriliyor...')">Fotoğraf Ekle</button>`;
+        popupText += `<br><button onclick="window.open('https://www.openstreetmap.org/edit')">İsim Düzenle</button>`;
+        
+        marker.bindPopup(popupText);
+    });
+</script>
+</body>
+</html>
+!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Website</title>
+</head>
+<body>
+    <h1>Hello World!</h1>
+    <p>Start coding your amazing website here!</p>
+</body>
+</html>
