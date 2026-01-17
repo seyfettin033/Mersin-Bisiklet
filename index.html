@@ -5,11 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TÜRKİYE Camileri</title>
 
+<!-- CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- EXCEL & PDF (STABİL CDN) -->
+<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
 <style>
 body{margin:0;font-family:Arial;background:#f4f4f4}
@@ -31,8 +33,8 @@ footer{text-align:center;background:#eee;padding:10px;font-size:12px}
 <body>
 
 <header>
-<div class="flag"></div>
-<h2>TÜRKİYE Camileri</h2>
+  <div class="flag"></div>
+  <h2>TÜRKİYE Camileri</h2>
 </header>
 
 <div id="namaz">Namaz vakitleri yükleniyor…</div>
@@ -42,19 +44,19 @@ footer{text-align:center;background:#eee;padding:10px;font-size:12px}
 
 <div id="panel">
 
-<div id="arama">
-<input id="il" placeholder="İl">
-<input id="ilce" placeholder="İlçe">
-<button onclick="ilIlceAra()">Ara</button>
-</div>
+  <div id="arama">
+    <input id="il" placeholder="İl">
+    <input id="ilce" placeholder="İlçe">
+    <button onclick="ilIlceAra()">Ara</button>
+  </div>
 
-<div style="margin-bottom:6px">
-<button onclick="excelIndir()">Excel</button>
-<button onclick="pdfIndir()">PDF</button>
-</div>
+  <div style="margin-bottom:6px">
+    <button onclick="excelIndir()">Excel</button>
+    <button onclick="pdfIndir()">PDF</button>
+  </div>
 
-<b id="sayac">0 Cami</b>
-<ul id="sonuclar"></ul>
+  <b id="sayac">0 Cami</b>
+  <ul id="sonuclar"></ul>
 
 </div>
 
@@ -71,7 +73,7 @@ const map=L.map("map").setView([39,35],6);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 const layer=L.layerGroup().addTo(map);
 
-/* MESAFE */
+/* MESAFE HESABI */
 function km(lat1,lon1,lat2,lon2){
 const R=6371;
 const dLat=(lat2-lat1)*Math.PI/180;
@@ -128,9 +130,11 @@ d.elements.forEach(e=>{
 const ad=e.tags?.name||"İsimsiz";
 const isim=ad.toLowerCase();
 if(!isim.includes("cami")&&!isim.includes("mescit"))return;
+
 const la=e.lat||e.center?.lat;
 const lo=e.lon||e.center?.lon;
 if(!la||!lo)return;
+
 const mes=km(userLat,userLon,la,lo);
 tumCamiler.push({ad,la,lo,mes});
 });
@@ -148,21 +152,23 @@ tumCamiler.forEach((c,i)=>{
 L.marker([c.la,c.lo]).addTo(layer)
 .bindPopup(`<b>${c.ad}</b><br>${c.mes.toFixed(2)} km<br>
 <a target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${c.la},${c.lo}">Yol Tarifi</a>`);
+
 h+=`<li><b>${i+1}.</b> ${c.ad} (${c.mes.toFixed(2)} km)
-<a class="yol" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${c.la},${c.lo}">Git</a></li>`;
+<a class="yol" target="_blank"
+href="https://www.google.com/maps/dir/?api=1&destination=${c.la},${c.lo}">Git</a></li>`;
 });
 document.getElementById("sonuclar").innerHTML=h;
 document.getElementById("sayac").innerText=tumCamiler.length+" Cami";
 }
 
-/* İL İLÇE ARA */
+/* İL / İLÇE */
 function ilIlceAra(){
 const il=document.getElementById("il").value;
 const ilce=document.getElementById("ilce").value;
 fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${il} ${ilce}`)
 .then(r=>r.json())
 .then(d=>{
-if(!d[0])return alert("Yer bulunamadı");
+if(!d[0]) return alert("Yer bulunamadı");
 userLat=parseFloat(d[0].lat);
 userLon=parseFloat(d[0].lon);
 map.setView([userLat,userLon],14);
@@ -172,30 +178,46 @@ camileriYukle(userLat,userLon);
 
 /* EXCEL */
 function excelIndir(){
-const ws=XLSX.utils.json_to_sheet(tumCamiler.map((c,i)=>({
+const veri=[
+{"UYARI":"Bu veri ticari amaçla kullanılamaz."},
+{},
+...tumCamiler.map((c,i)=>({
 "Sıra":i+1,
 "Cami Adı":c.ad,
 "Mesafe (km)":c.mes.toFixed(2),
 "Enlem":c.la,
 "Boylam":c.lo
-})));
+}))
+];
+
+const ws=XLSX.utils.json_to_sheet(veri);
 const wb=XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(wb,ws,"Camiler");
-XLSX.writeFile(wb,"turkiye_camileri.xlsx");
+XLSX.writeFile(wb,"universite_camileri.xlsx");
 }
 
 /* PDF */
 function pdfIndir(){
 const {jsPDF}=window.jspdf;
 const pdf=new jsPDF();
-pdf.text("Türkiye Camileri (Üniversite Öğrencileri İçin)",10,10);
-let y=20;
+
+pdf.setFontSize(14);
+pdf.text("Türkiye Camileri",10,12);
+pdf.setFontSize(10);
+pdf.text("Bu veri ticari amaçla kullanılamaz.",10,20);
+
+let y=30;
 tumCamiler.forEach((c,i)=>{
 pdf.text(`${i+1}. ${c.ad} - ${c.mes.toFixed(2)} km`,10,y);
-y+=8;
-if(y>280){pdf.addPage();y=10;}
+y+=7;
+if(y>280){
+pdf.addPage();
+pdf.text("Bu veri ticari amaçla kullanılamaz.",10,12);
+y=22;
+}
 });
-pdf.save("turkiye_camileri.pdf");
+
+pdf.save("universite_camileri.pdf");
 }
 </script>
 
