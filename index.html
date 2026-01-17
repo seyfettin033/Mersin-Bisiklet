@@ -1,154 +1,203 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TÜRKİYE Camileri | Rehber</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-    <style>
-        body { margin:0; font-family: 'Segoe UI', Arial, sans-serif; background:#f4f4f4; overflow-x: hidden; }
-        header { display:flex; align-items:center; gap:15px; padding:15px; background:#e30a17; color:white; border-bottom: 4px solid #c10914; }
-        .flag { width:50px; height:33px; background: url('https://flagcdn.com/tr.svg') no-repeat center; background-size: contain; }
-        header h1 { font-size:20px; margin:0; text-transform: uppercase; letter-spacing: 1px; }
-        #namaz { background:white; padding:12px; text-align:center; font-size:13px; border-bottom: 1px solid #ddd; display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; }
-        #namaz span { background: #f8f9fa; padding: 5px 10px; border-radius: 5px; border: 1px solid #eee; font-weight: bold; color: #333; }
-        #ayet { background:#fff3cd; padding:15px; font-style:italic; text-align:center; font-size:14px; line-height: 1.5; color: #856404; border-bottom: 1px solid #ffeeba; }
-        #map { height:50vh; width: 100%; }
-        #panel { padding:15px; background:white; max-height: 30vh; overflow-y: auto; }
-        .durum-cubugu { margin-bottom: 10px; font-size: 14px; color: #666; border-bottom: 2px solid #f4f4f4; padding-bottom: 5px; }
-        #sonuclar { list-style: none; padding: 0; margin: 0; }
-        #sonuclar li { padding:10px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
-        .yol-btn { background: #007bff; color: white; text-decoration: none; padding: 5px 10px; border-radius: 4px; font-size: 12px; }
-        footer { text-align:center; padding:15px; font-size:12px; color:#777; background:#eee; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TÜRKİYE Camileri</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body{margin:0;font-family:Arial;background:#f4f4f4}
+header{background:#e30a17;color:#fff;display:flex;align-items:center;gap:15px;padding:12px}
+.flag{width:45px;height:30px;background:url("https://flagcdn.com/tr.svg") no-repeat center/contain}
+#namaz,#ayet{background:#fff;padding:10px;text-align:center;font-size:13px}
+#ayet{background:#fff3cd;font-style:italic}
+#map{height:50vh}
+#panel{background:#fff;padding:10px;max-height:35vh;overflow:auto}
+#arama{display:flex;gap:6px;margin-bottom:8px}
+#arama input{flex:1;padding:6px}
+#arama button{background:#e30a17;color:#fff;border:none;padding:6px 10px}
+#sonuclar li{border-bottom:1px solid #eee;padding:6px;font-size:14px}
+.yol{background:#007bff;color:#fff;padding:3px 6px;border-radius:4px;text-decoration:none;font-size:12px}
+footer{text-align:center;background:#eee;padding:10px;font-size:12px}
+</style>
 </head>
+
 <body>
 
 <header>
-    <div class="flag"></div>
-    <h1>TÜRKİYE Camileri</h1>
+<div class="flag"></div>
+<h2>TÜRKİYE Camileri</h2>
 </header>
 
-<div id="namaz">Vakitler yükleniyor...</div>
-<div id="ayet">Ayet-i Kerime yükleniyor...</div>
+<div id="namaz">Namaz vakitleri yükleniyor…</div>
+<div id="ayet">Ayet yükleniyor…</div>
 
 <div id="map"></div>
 
 <div id="panel">
-    <div class="durum-cubugu">
-        <i class="fa-solid fa-location-dot"></i> <span id="durum">Konum bekleniyor...</span> | 
-        <i class="fa-solid fa-mosque"></i> <span id="sayac">0 Cami</span>
-    </div>
-    <ul id="sonuclar"></ul>
+
+<div id="arama">
+<input id="il" placeholder="İl">
+<input id="ilce" placeholder="İlçe">
+<button onclick="ilIlceAra()">Ara</button>
+</div>
+
+<div style="margin-bottom:6px">
+<button onclick="excelIndir()">Excel</button>
+<button onclick="pdfIndir()">PDF</button>
+</div>
+
+<b id="sayac">0 Cami</b>
+<ul id="sonuclar"></ul>
+
 </div>
 
 <footer>
-    © 2024 - <b>Seyfettin Gündoğdu</b> | Veriler: OpenStreetMap & Aladhan API
+Bu sayfa <b>Seyfettin Gündoğdu</b> tarafından hazırlanmıştır.
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const map = L.map('map').setView([39, 35], 6);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OSM'
-}).addTo(map);
-const markers = L.layerGroup().addTo(map);
+let userLat=0,userLon=0;
+let tumCamiler=[];
 
-// KONUM ALMA
-if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(pos => {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
+const map=L.map("map").setView([39,35],6);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+const layer=L.layerGroup().addTo(map);
 
-        map.setView([lat, lon], 14);
-        L.circle([lat, lon], {radius: 200, color: 'blue'}).addTo(map).bindPopup("Buradasınız");
-
-        namazSaatleri(lat, lon);
-        camileriYukle(lat, lon);
-    }, () => {
-        document.getElementById("durum").innerText = "Konum izni reddedildi.";
-    });
+/* MESAFE */
+function km(lat1,lon1,lat2,lon2){
+const R=6371;
+const dLat=(lat2-lat1)*Math.PI/180;
+const dLon=(lon2-lon1)*Math.PI/180;
+const a=Math.sin(dLat/2)**2+
+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
-// NAMAZ VAKİTLERİ
-function namazSaatleri(lat, lon) {
-    fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=13`)
-    .then(r => r.json())
-    .then(d => {
-        const t = d.data.timings;
-        document.getElementById("namaz").innerHTML = `
-            <span>İmsak <b>${t.Fajr}</b></span>
-            <span>Güneş <b>${t.Sunrise}</b></span>
-            <span>Öğle <b>${t.Dhuhr}</b></span>
-            <span>İkindi <b>${t.Asr}</b></span>
-            <span>Akşam <b>${t.Maghrib}</b></span>
-            <span>Yatsı <b>${t.Isha}</b></span>
-        `;
-    }).catch(() => document.getElementById("namaz").innerText = "Vakitler alınamadı.");
-}
+/* KONUM */
+navigator.geolocation.getCurrentPosition(p=>{
+userLat=p.coords.latitude;
+userLon=p.coords.longitude;
+map.setView([userLat,userLon],14);
+L.marker([userLat,userLon]).addTo(map).bindPopup("Konumunuz");
+namaz(userLat,userLon);
+camileriYukle(userLat,userLon);
+});
 
-// AYET ÇEKME (Diyanet Meali)
-fetch("https://api.alquran.cloud/v1/ayah/262/tr.diyanet")
+/* NAMAZ */
+function namaz(lat,lon){
+fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=13`)
 .then(r=>r.json())
 .then(d=>{
-    document.getElementById("ayet").innerHTML = `<i class="fa-solid fa-quote-left"></i> ${d.data.text} <small>(${d.data.surah.englishName} / ${d.data.numberInSurah})</small>`;
+const t=d.data.timings;
+document.getElementById("namaz").innerText=
+`İmsak ${t.Fajr} | Öğle ${t.Dhuhr} | İkindi ${t.Asr} | Akşam ${t.Maghrib} | Yatsı ${t.Isha}`;
 });
-
-// CAMİLERİ YÜKLE
-function camileriYukle(lat, lon) {
-    document.getElementById("durum").innerText = "Camiler aranıyor...";
-    
-    // Sadece Müslüman ibadethanelerini filtreleyen temiz sorgu
-    const q = `[out:json][timeout:25];
-    (
-      node["amenity"="place_of_worship"]["religion"="muslim"](around:3000,${lat},${lon});
-      way["amenity"="place_of_worship"]["religion"="muslim"](around:3000,${lat},${lon});
-    );
-    out center;`;
-
-    fetch("https://overpass-api.de/api/interpreter", {
-        method: "POST",
-        body: "data=" + encodeURIComponent(q)
-    })
-    .then(r => r.json())
-    .then(d => {
-        markers.clearLayers();
-        let say = 0;
-        let html = "";
-
-        d.elements.forEach(el => {
-            const ad = el.tags?.name || "İsimsiz Cami/Mescit";
-            const la = el.lat || el.center?.lat;
-            const lo = el.lon || el.center?.lon;
-            
-            if(!la || !lo) return;
-            say++;
-
-            // Marker ekle
-            L.marker([la, lo]).addTo(markers)
-                .bindPopup(`<b>${ad}</b><br><a href="https://www.google.com/maps/dir/?api=1&destination=${la},${lo}" target="_blank">📍 Yol Tarifi Al</a>`);
-
-            html += `<li><span>${ad}</span> <a href="https://www.google.com/maps/dir/?api=1&destination=${la},${lo}" target="_blank" class="yol-btn">GİT</a></li>`;
-        });
-
-        document.getElementById("sonuclar").innerHTML = html || "<li>Yakında cami bulunamadı.</li>";
-        document.getElementById("sayac").innerText = say + " Cami";
-        document.getElementById("durum").innerText = "Bölge Güncel";
-    })
-    .catch(err => {
-        document.getElementById("durum").innerText = "Hata oluştu!";
-        console.error(err);
-    });
 }
 
-// Harita her hareket ettiğinde listeyi güncelle
-map.on('moveend', () => {
-    const c = map.getCenter();
-    camileriYukle(c.lat, c.lng);
+/* AYET */
+fetch("https://api.alquran.cloud/v1/ayah/255/tr.diyanet")
+.then(r=>r.json())
+.then(d=>document.getElementById("ayet").innerText=d.data.text);
+
+/* CAMİLER */
+function camileriYukle(lat,lon){
+fetch("https://overpass-api.de/api/interpreter",{
+method:"POST",
+body:"data="+encodeURIComponent(`
+[out:json][timeout:25];
+(
+node["amenity"="place_of_worship"](around:3000,${lat},${lon});
+way["amenity"="place_of_worship"](around:3000,${lat},${lon});
+);
+out center;`)
+})
+.then(r=>r.json())
+.then(d=>{
+tumCamiler=[];
+layer.clearLayers();
+
+d.elements.forEach(e=>{
+const ad=e.tags?.name||"İsimsiz";
+const isim=ad.toLowerCase();
+if(!isim.includes("cami")&&!isim.includes("mescit"))return;
+const la=e.lat||e.center?.lat;
+const lo=e.lon||e.center?.lon;
+if(!la||!lo)return;
+const mes=km(userLat,userLon,la,lo);
+tumCamiler.push({ad,la,lo,mes});
 });
+
+tumCamiler.sort((a,b)=>a.mes-b.mes);
+listele();
+});
+}
+
+/* LİSTE + NUMARA */
+function listele(){
+layer.clearLayers();
+let h="";
+tumCamiler.forEach((c,i)=>{
+L.marker([c.la,c.lo]).addTo(layer)
+.bindPopup(`<b>${c.ad}</b><br>${c.mes.toFixed(2)} km<br>
+<a target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${c.la},${c.lo}">Yol Tarifi</a>`);
+h+=`<li><b>${i+1}.</b> ${c.ad} (${c.mes.toFixed(2)} km)
+<a class="yol" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${c.la},${c.lo}">Git</a></li>`;
+});
+document.getElementById("sonuclar").innerHTML=h;
+document.getElementById("sayac").innerText=tumCamiler.length+" Cami";
+}
+
+/* İL İLÇE ARA */
+function ilIlceAra(){
+const il=document.getElementById("il").value;
+const ilce=document.getElementById("ilce").value;
+fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${il} ${ilce}`)
+.then(r=>r.json())
+.then(d=>{
+if(!d[0])return alert("Yer bulunamadı");
+userLat=parseFloat(d[0].lat);
+userLon=parseFloat(d[0].lon);
+map.setView([userLat,userLon],14);
+camileriYukle(userLat,userLon);
+});
+}
+
+/* EXCEL */
+function excelIndir(){
+const ws=XLSX.utils.json_to_sheet(tumCamiler.map((c,i)=>({
+"Sıra":i+1,
+"Cami Adı":c.ad,
+"Mesafe (km)":c.mes.toFixed(2),
+"Enlem":c.la,
+"Boylam":c.lo
+})));
+const wb=XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(wb,ws,"Camiler");
+XLSX.writeFile(wb,"turkiye_camileri.xlsx");
+}
+
+/* PDF */
+function pdfIndir(){
+const {jsPDF}=window.jspdf;
+const pdf=new jsPDF();
+pdf.text("Türkiye Camileri (Üniversite Öğrencileri İçin)",10,10);
+let y=20;
+tumCamiler.forEach((c,i)=>{
+pdf.text(`${i+1}. ${c.ad} - ${c.mes.toFixed(2)} km`,10,y);
+y+=8;
+if(y>280){pdf.addPage();y=10;}
+});
+pdf.save("turkiye_camileri.pdf");
+}
 </script>
 
 </body>
 </html>
-
