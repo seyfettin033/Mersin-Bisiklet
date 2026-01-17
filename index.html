@@ -5,11 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TÜRKİYE Camileri</title>
 
-<!-- CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-<!-- EXCEL & PDF (STABİL CDN) -->
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
@@ -68,12 +66,14 @@ Bu sayfa <b>Seyfettin Gündoğdu</b> tarafından hazırlanmıştır.
 <script>
 let userLat=0,userLon=0;
 let tumCamiler=[];
+let secilenIl="",secilenIlce="",secilenMahalle="";
 
+/* HARİTA */
 const map=L.map("map").setView([39,35],6);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 const layer=L.layerGroup().addTo(map);
 
-/* MESAFE HESABI */
+/* MESAFE */
 function km(lat1,lon1,lat2,lon2){
 const R=6371;
 const dLat=(lat2-lat1)*Math.PI/180;
@@ -130,11 +130,9 @@ d.elements.forEach(e=>{
 const ad=e.tags?.name||"İsimsiz";
 const isim=ad.toLowerCase();
 if(!isim.includes("cami")&&!isim.includes("mescit"))return;
-
 const la=e.lat||e.center?.lat;
 const lo=e.lon||e.center?.lon;
 if(!la||!lo)return;
-
 const mes=km(userLat,userLon,la,lo);
 tumCamiler.push({ad,la,lo,mes});
 });
@@ -144,7 +142,7 @@ listele();
 });
 }
 
-/* LİSTE + NUMARA */
+/* LİSTE */
 function listele(){
 layer.clearLayers();
 let h="";
@@ -152,7 +150,6 @@ tumCamiler.forEach((c,i)=>{
 L.marker([c.la,c.lo]).addTo(layer)
 .bindPopup(`<b>${c.ad}</b><br>${c.mes.toFixed(2)} km<br>
 <a target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${c.la},${c.lo}">Yol Tarifi</a>`);
-
 h+=`<li><b>${i+1}.</b> ${c.ad} (${c.mes.toFixed(2)} km)
 <a class="yol" target="_blank"
 href="https://www.google.com/maps/dir/?api=1&destination=${c.la},${c.lo}">Git</a></li>`;
@@ -163,14 +160,17 @@ document.getElementById("sayac").innerText=tumCamiler.length+" Cami";
 
 /* İL / İLÇE */
 function ilIlceAra(){
-const il=document.getElementById("il").value;
-const ilce=document.getElementById("ilce").value;
-fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${il} ${ilce}`)
+secilenIl=document.getElementById("il").value;
+secilenIlce=document.getElementById("ilce").value;
+
+fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${secilenIl} ${secilenIlce}`)
 .then(r=>r.json())
 .then(d=>{
 if(!d[0]) return alert("Yer bulunamadı");
 userLat=parseFloat(d[0].lat);
 userLon=parseFloat(d[0].lon);
+const a=d[0].address||{};
+secilenMahalle=a.suburb||a.neighbourhood||a.quarter||"";
 map.setView([userLat,userLon],14);
 camileriYukle(userLat,userLon);
 });
@@ -179,7 +179,9 @@ camileriYukle(userLat,userLon);
 /* EXCEL */
 function excelIndir(){
 const veri=[
-{"UYARI":"Bu veri ticari amaçla kullanılamaz."},
+{"":"TÜRKİYE Camileri"},
+{"":`İl: ${secilenIl||"-"} | İlçe: ${secilenIlce||"-"} | Mahalle: ${secilenMahalle||"-"}`},
+{"":"Bu veri ticari amaçla kullanılamaz."},
 {},
 ...tumCamiler.map((c,i)=>({
 "Sıra":i+1,
@@ -189,11 +191,10 @@ const veri=[
 "Boylam":c.lo
 }))
 ];
-
 const ws=XLSX.utils.json_to_sheet(veri);
 const wb=XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(wb,ws,"Camiler");
-XLSX.writeFile(wb,"universite_camileri.xlsx");
+XLSX.writeFile(wb,"turkiye_camileri.xlsx");
 }
 
 /* PDF */
@@ -201,23 +202,19 @@ function pdfIndir(){
 const {jsPDF}=window.jspdf;
 const pdf=new jsPDF();
 
-pdf.setFontSize(14);
-pdf.text("Türkiye Camileri",10,12);
+pdf.setFontSize(16);
+pdf.text("TÜRKİYE Camileri",10,15);
 pdf.setFontSize(10);
-pdf.text("Bu veri ticari amaçla kullanılamaz.",10,20);
+pdf.text(`İl: ${secilenIl||"-"}  İlçe: ${secilenIlce||"-"}  Mahalle: ${secilenMahalle||"-"}`,10,23);
+pdf.text("Bu veri ticari amaçla kullanılamaz.",10,29);
 
-let y=30;
+let y=40;
 tumCamiler.forEach((c,i)=>{
 pdf.text(`${i+1}. ${c.ad} - ${c.mes.toFixed(2)} km`,10,y);
 y+=7;
-if(y>280){
-pdf.addPage();
-pdf.text("Bu veri ticari amaçla kullanılamaz.",10,12);
-y=22;
-}
+if(y>280){pdf.addPage();y=20;}
 });
-
-pdf.save("universite_camileri.pdf");
+pdf.save("turkiye_camileri.pdf");
 }
 </script>
 
