@@ -3,63 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cami Bulucu | Akıllı Mesafe</title>
+    <title>Camii Bulucu | V3</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <style>
         :root { --ana-kahve: #3d2b1f; --altin: #d4af37; --krem: #fdf5e6; }
-        body { margin: 0; font-family: 'Segoe UI', serif; height: 100vh; display: flex; flex-direction: column; background: var(--krem); overflow: hidden; }
-        #header { background: var(--ana-kahve); color: var(--altin); padding: 12px; text-align: center; border-bottom: 3px solid var(--altin); box-shadow: 0 2px 10px rgba(0,0,0,0.5); z-index: 1000; }
-        .logo-alan { font-size: 1.4em; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        #bilgi-cubugu { background: #5d4037; color: white; padding: 5px; text-align: center; font-size: 0.85em; border-bottom: 1px solid var(--altin); }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; height: 100vh; display: flex; flex-direction: column; background: var(--krem); overflow: hidden; }
+        
+        /* Üst Başlık ve Logo */
+        #header { background: var(--ana-kahve); color: var(--altin); padding: 12px; text-align: center; border-bottom: 3px solid var(--altin); z-index: 1000; }
+        .logo-text { font-size: 1.5em; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        
+        /* En Yakın Cami Bilgi Çubuğu */
+        #yakin-bilgi { background: #5d4037; color: #fff; padding: 8px; text-align: center; font-size: 0.9em; border-bottom: 1px solid var(--altin); font-style: italic; }
+        
         #map { flex-grow: 1; width: 100%; }
-        .cami-etiket { background: var(--ana-kahve); color: var(--altin); border: 1px solid var(--altin); padding: 2px 6px; font-weight: bold; font-size: 11px; border-radius: 4px; }
+
+        /* Etiket Tasarımı */
+        .cami-etiket { background: var(--ana-kahve); color: var(--altin); border: 1px solid var(--altin); padding: 2px 6px; font-weight: bold; font-size: 11px; border-radius: 4px; white-space: nowrap; }
     </style>
 </head>
 <body>
 
 <div id="header">
-    <div class="logo-alan"><i class="fa-solid fa-mosque"></i> CAMİ BULUCU</div>
-    <div id="durum" style="font-size: 0.6em; color: #fff; margin-top: 5px;">Konum aranıyor...</div>
+    <div class="logo-text"><i class="fa-solid fa-mosque"></i> CAMİ BULUCU</div>
+    <div id="durum" style="font-size: 0.7em; color: #ccc;">Konumunuz taranıyor...</div>
 </div>
 
-<div id="bilgi-cubugu">En yakın cami hesaplanıyor...</div>
+<div id="yakin-bilgi">En yakın cami hesaplanıyor...</div>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-    var map = L.map('map').setView([36.8, 34.6], 13);
+    // Haritayı başlat
+    var map = L.map('map').setView([36.8, 34.6], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
     var camiLayer = L.layerGroup().addTo(map);
-    var userLatLng = null;
+    var userPos = null;
 
-    // 1. Konumu Bul ve İşaretle
+    // 1. Konum Bulma ve "Buradasınız" Yazısı
     map.locate({setView: true, maxZoom: 16});
 
     map.on('locationfound', function(e) {
-        userLatLng = e.latlng;
-        L.marker(e.latlng).addTo(map).bindPopup("<b>Şu an buradasınız</b>").openPopup();
-        verileriGetir(map.getBounds());
+        userPos = e.latlng;
+        L.marker(e.latlng).addTo(map)
+            .bindPopup("<b style='color:var(--ana-kahve)'>Şu an buradasınız</b>")
+            .openPopup();
+        verileriCek(map.getBounds());
     });
 
     map.on('locationerror', function() {
-        document.getElementById('durum').innerText = "Konum izni reddedildi.";
-        verileriGetir(map.getBounds());
+        document.getElementById('durum').innerText = "Konum izni alınamadı.";
+        verileriCek(map.getBounds());
     });
 
-    // 2. Camileri Getir ve Mesafeyi Hesapla
-    function verileriGetir(bounds) {
-        document.getElementById('durum').innerText = "Camiler taranıyor...";
+    // 2. Veri Çekme ve Mesafe Hesaplama
+    function verileriCek(bounds) {
+        document.getElementById('durum').innerText = "Veriler güncelleniyor...";
         var bbox = bounds.getSouthWest().lat + "," + bounds.getSouthWest().lng + "," + bounds.getNorthEast().lat + "," + bounds.getNorthEast().lng;
+        
+        // Alternatif sunucu (Overpass Kumi) daha hızlı sonuç verebilir
         var query = `[out:json][timeout:15];(node["amenity"="place_of_worship"]["religion"="muslim"](${bbox});way["amenity"="place_of_worship"]["religion"="muslim"](${bbox}););out center;`;
         var url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
 
         fetch(url).then(res => res.json()).then(data => {
             camiLayer.clearLayers();
-            let enYakinMesafe = Infinity;
-            let enYakinIsim = "";
+            let nearest = { name: "", dist: Infinity };
 
             data.elements.forEach(el => {
                 let lat = el.lat || el.center.lat;
@@ -67,30 +78,35 @@
                 let isim = el.tags.name || "İsimsiz Cami";
                 let renk = el.tags.name ? "#d4af37" : "#8b0000";
 
-                let m = L.circleMarker([lat, lon], {radius: 10, fillColor: renk, color: "#fff", weight: 2, fillOpacity: 0.9}).addTo(camiLayer);
-                m.bindTooltip(isim, {permanent: true, direction: 'top', className: 'cami-etiket', offset: [0, -10]});
+                let marker = L.circleMarker([lat, lon], {
+                    radius: 10, fillColor: renk, color: "#fff", weight: 2, fillOpacity: 0.9
+                }).addTo(camiLayer);
 
-                // Mesafe Hesaplama
-                if (userLatLng) {
-                    let d = userLatLng.distanceTo([lat, lon]);
-                    if (d < enYakinMesafe) {
-                        enYakinMesafe = d;
-                        enYakinIsim = isim;
+                marker.bindTooltip(isim, {permanent: true, direction: 'top', className: 'cami-etiket', offset: [0, -10]});
+
+                // Mesafe ölçümü
+                if (userPos) {
+                    let d = userPos.distanceTo([lat, lon]);
+                    if (d < nearest.dist) {
+                        nearest.dist = d;
+                        nearest.name = isim;
                     }
                 }
             });
 
-            document.getElementById('durum').innerText = data.elements.length + " cami bulundu.";
-            if (enYakinIsim) {
-                let mesafeMetin = enYakinMesafe > 1000 ? (enYakinMesafe/1000).toFixed(1) + " km" : Math.round(enYakinMesafe) + " metre";
-                document.getElementById('bilgi-cubugu').innerHTML = `📍 En yakın: <b>${enYakinIsim}</b> (${mesafeMetin} uzaklıkta)`;
+            document.getElementById('durum').innerText = data.elements.length + " nokta bulundu.";
+            
+            if (nearest.name) {
+                let dText = nearest.dist > 1000 ? (nearest.dist/1000).toFixed(1) + " km" : Math.round(nearest.dist) + " m";
+                document.getElementById('yakin-bilgi').innerHTML = `📍 En yakın cami: <b>${nearest.name}</b> (${dText} uzaklıkta)`;
             }
         }).catch(() => {
-            document.getElementById('durum').innerText = "Bağlantı sorunu yaşandı.";
+            document.getElementById('durum').innerText = "Sunucu meşgul, otomatik tekrar denenecek...";
+            setTimeout(() => verileriCek(map.getBounds()), 5000); // 5 saniye sonra tekrar dene
         });
     }
 
-    map.on('moveend', function() { verileriGetir(map.getBounds()); });
+    map.on('moveend', function() { verileriCek(map.getBounds()); });
 </script>
 </body>
 </html>
