@@ -3,154 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cami & Mescit Rehberi</title>
+    <title>Türkiye Cami Rehberi</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <style>
-        :root { --ana: #3d2b1f; --altin: #d4af37; --krem: #fdf5e6; --yesil: #28a745; }
-        body { margin: 0; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; background: var(--krem); }
+        :root { --ana: #3d2b1f; --altin: #d4af37; --krem: #fdf5e6; --beyaz: #ffffff; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; background: var(--krem); overflow: hidden; }
         
-        /* Üst Panel ve Seçim Alanı */
         #header { background: var(--ana); color: var(--altin); padding: 15px; text-align: center; border-bottom: 3px solid var(--altin); }
-        .sorgu-paneli { background: #fff; padding: 10px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        select, button { padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; }
-        select { flex: 1; min-width: 120px; border-color: var(--altin); }
-        button { background: var(--ana); color: var(--altin); border: none; cursor: pointer; font-weight: bold; }
+        
+        /* Gelişmiş Arama Paneli */
+        .arama-paneli { background: var(--beyaz); padding: 10px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1001; }
+        .satir { display: flex; gap: 5px; }
+        select, input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid var(--altin); font-size: 14px; outline: none; }
+        .bul-btn { background: var(--ana); color: var(--altin); border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
-        /* Ana İçerik */
-        #map { height: 45vh; width: 100%; border-bottom: 2px solid var(--altin); }
-        #liste-alani { flex: 1; overflow-y: auto; background: #fff; }
-        .liste-baslik { padding: 10px; background: #eee; font-weight: bold; font-size: 0.9em; position: sticky; top: 0; z-index: 10; }
-        .cami-kart { padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-        .cami-bilgi { flex: 1; }
-        .cami-ad { font-weight: bold; color: var(--ana); margin-bottom: 4px; }
-        .cami-konum { font-size: 0.8em; color: #666; }
-        .yol-tarifi { background: var(--yesil); color: white; text-decoration: none; padding: 8px 12px; border-radius: 5px; font-size: 0.85em; font-weight: bold; white-space: nowrap; }
+        /* İçerik Alanı */
+        #map { height: 35vh; width: 100%; border-bottom: 2px solid var(--altin); }
+        #liste-alani { flex: 1; overflow-y: auto; background: var(--beyaz); }
+        
+        .sonuc-ozet { padding: 10px; background: #f8f8f8; font-size: 0.85em; color: #555; border-bottom: 1px solid #eee; font-weight: bold; }
+        .cami-kart { 
+            padding: 15px; border-bottom: 1px solid #eee; display: flex; 
+            justify-content: space-between; align-items: center; transition: 0.2s;
+        }
+        .cami-kart:active { background: #f0f0f0; }
+        .isim { font-weight: bold; color: var(--ana); font-size: 1em; }
+        .alt-bilgi { font-size: 0.8em; color: #888; margin-top: 4px; }
+        .git-btn { background: #28a745; color: white; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; font-size: 0.85em; }
 
-        /* Ayet Bölümü */
-        #ayet-footer { background: var(--ana); color: #fff; padding: 12px; text-align: center; font-size: 0.9em; border-top: 2px solid var(--altin); }
+        #yukleniyor { text-align: center; padding: 40px; color: #999; display: none; }
     </style>
 </head>
 <body>
 
 <div id="header">
-    <div style="font-size: 1.4em; font-weight: bold;"><i class="fa-solid fa-mosque"></i> CAMİ BULUCU</div>
+    <div style="font-size: 1.3em; font-weight: bold;"><i class="fa-solid fa-mosque"></i> CAMİ BULUCU</div>
 </div>
 
-<div class="sorgu-paneli">
-    <select id="sehirSec" onchange="ilceGuncelle()">
-        <option value="">İl Seçin</option>
-        <option value="mersin">Mersin</option>
-        <option value="adana">Adana</option>
-    </select>
-    <select id="ilceSec">
-        <option value="">İlçe Seçin</option>
-    </select>
-    <button onclick="sorgula()">SORGULA</button>
+<div class="arama-paneli">
+    <div class="satir">
+        <input type="text" id="sehirInput" placeholder="Şehir veya İlçe yazın (Örn: Kozan)">
+        <button class="bul-btn" onclick="bolgeAra()"><i class="fa-solid fa-magnifying-glass"></i></button>
+    </div>
+    <div style="font-size: 11px; color: #666; text-align: center;">Haritayı kaydırdığınız her yerde otomatik listeleme yapar.</div>
 </div>
 
 <div id="map"></div>
 
 <div id="liste-alani">
-    <div class="liste-baslik" id="liste-durum">Yakındaki camiler burada listelenecek...</div>
+    <div id="sonuc-ozet" class="sonuc-ozet">Lütfen bir bölge arayın veya konuma izin verin.</div>
+    <div id="yukleniyor"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><br><br>Camiler getiriliyor...</div>
     <div id="sonuclar"></div>
-</div>
-
-<div id="ayet-footer">
-    <div id="ayet-metin" style="font-style: italic;"></div>
-    <div id="ayet-kaynak" style="color: var(--altin); font-size: 0.8em; margin-top:3px;"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-    var map = L.map('map').setView([36.81, 34.64], 13);
+    var map = L.map('map', {zoomControl: false}).setView([38.9637, 35.2433], 6); // Türkiye Geneli
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    var markerGrup = L.layerGroup().addTo(map);
+    var markers = L.layerGroup().addTo(map);
 
-    const konumlar = {
-        "mersin": {
-            merkez: [36.81, 34.64],
-            ilceler: { "Akdeniz": [36.81, 34.64], "Yenişehir": [36.79, 34.58], "Toroslar": [36.83, 34.62], "Mezitli": [36.75, 34.53] }
-        },
-        "adana": {
-            merkez: [37.00, 35.32],
-            ilceler: { "Seyhan": [36.99, 35.32], "Çukurova": [37.05, 35.29], "Kozan": [37.45, 35.81], "Sarıçam": [37.06, 35.43] }
-        }
-    };
+    // Otomatik Konum Bulma
+    map.locate({setView: true, maxZoom: 14});
+    map.on('locationfound', e => camileriGetir(e.latlng.lat, e.latlng.lng));
 
-    function ilceGuncelle() {
-        const sehir = document.getElementById('sehirSec').value;
-        const ilceDropdown = document.getElementById('ilceSec');
-        ilceDropdown.innerHTML = '<option value="">İlçe Seçin</option>';
-        if (sehir && konumlar[sehir]) {
-            Object.keys(konumlar[sehir].ilceler).forEach(ilce => {
-                ilceDropdown.innerHTML += `<option value="${ilce}">${ilce}</option>`;
-            });
-        }
+    // Manuel Bölge Arama (Nominatim API kullanarak koordinat bulur)
+    function bolgeAra() {
+        let q = document.getElementById('sehirInput').value;
+        if(!q) return;
+        
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q},Turkey`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.length > 0) {
+                let lat = data[0].lat;
+                let lon = data[0].lon;
+                map.setView([lat, lon], 14);
+                camileriGetir(lat, lon);
+            } else {
+                alert("Bölge bulunamadı!");
+            }
+        });
     }
 
-    function sorgula() {
-        const sehir = document.getElementById('sehirSec').value;
-        const ilce = document.getElementById('ilceSec').value;
-        if (!sehir || !ilce) return alert("Lütfen il ve ilçe seçin.");
-
-        const koordinat = konumlar[sehir].ilceler[ilce];
-        map.setView(koordinat, 15);
-        verileriGetir(koordinat[0], koordinat[1], ilce);
-    }
-
-    function verileriGetir(lat, lon, ilceAdi) {
-        document.getElementById('liste-durum').innerText = ilceAdi + " bölgesi taranıyor...";
+    // Camileri Getirme (Overpass API)
+    function camileriGetir(lat, lon) {
+        document.getElementById('yukleniyor').style.display = "block";
         document.getElementById('sonuclar').innerHTML = "";
         
-        // Çok geniş arama: Cami, Camii, Mescit ve İbadethane etiketli her şeyi getir.
+        // Türkiye geneli en kapsamlı sorgu (4km çap)
         var query = `[out:json][timeout:30];
         (
           node(around:4000,${lat},${lon})["amenity"~"place_of_worship|mosque"];
           way(around:4000,${lat},${lon})["amenity"~"place_of_worship|mosque"];
           node(around:4000,${lat},${lon})["name"~"Cami|Camii|Mescit"];
+          way(around:4000,${lat},${lon})["name"~"Cami|Camii|Mescit"];
         );
         out center;`;
 
         fetch("https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query))
         .then(res => res.json())
         .then(data => {
-            markerGrup.clearLayers();
+            document.getElementById('yukleniyor').style.display = "none";
+            markers.clearLayers();
             let html = "";
+            
             if(data.elements.length === 0) {
-                document.getElementById('liste-durum').innerText = "Bu bölgede kayıt bulunamadı.";
+                document.getElementById('sonuc-ozet').innerText = "Bu bölgede cami kaydı bulunamadı.";
                 return;
             }
+
+            document.getElementById('sonuc-ozet').innerText = `Bu bölgede ${data.elements.length} cami/mescit listelendi.`;
+
+            data.elements.sort((a,b) => (a.tags.name || "").localeCompare(b.tags.name || ""));
+
             data.elements.forEach(el => {
                 let cLat = el.lat || el.center.lat;
                 let cLon = el.lon || el.center.lng;
-                let ad = el.tags.name || "İsimsiz Cami/Mescit";
+                let ad = el.tags.name || "İbadethane / Mescit";
                 
-                L.circleMarker([cLat, cLon], {radius: 10, fillColor: "#d4af37", color: "#fff", weight: 2, fillOpacity: 0.9}).addTo(markerGrup).bindPopup(ad);
+                // Haritaya işaretçi
+                L.circleMarker([cLat, cLon], {radius: 9, fillColor: "#d4af37", color: "#fff", weight: 2, fillOpacity: 0.9}).addTo(markers).bindPopup(ad);
 
+                // Listeye kart
                 html += `
                     <div class="cami-kart">
-                        <div class="cami-bilgi">
-                            <div class="cami-ad">${ad}</div>
-                            <div class="cami-konum">${ilceAdi} / Mersin-Adana Çevresi</div>
+                        <div style="flex:1; padding-right:10px;">
+                            <div class="isim">${ad}</div>
+                            <div class="alt-bilgi"><i class="fa-solid fa-location-dot"></i> Türkiye Geneli / Kayıtlı Bölge</div>
                         </div>
-                        <a href="https://www.google.com/maps/dir/?api=1&destination=${cLat},${cLon}" target="_blank" class="yol-tarifi">Yol Tarifi</a>
+                        <a href="https://www.google.com/maps/dir/?api=1&destination=${cLat},${cLon}" target="_blank" class="git-btn">NAVİGASYON</a>
                     </div>`;
             });
             document.getElementById('sonuclar').innerHTML = html;
-            document.getElementById('liste-durum').innerText = ilceAdi + " bölgesinde " + data.elements.length + " yer bulundu.";
+        }).catch(() => {
+            document.getElementById('yukleniyor').innerText = "Hata oluştu, lütfen tekrar deneyin.";
         });
     }
 
-    // Ayetleri Getir
-    const ayetler = [
-        {m: "“Şüphesiz güçlükle beraber bir kolaylık vardır.”", k: "İnşirah Suresi, 5. Ayet"},
-        {m: "“Dua edin, duanıza karşılık vereyim.”", k: "Mü'min Suresi, 60. Ayet"},
-        {m: "“Allah sabredenlerle beraberdir.”", k: "Bakara Suresi, 153. Ayet"}
-    ];
-    let a = ayetler[Math.floor(Math.random() * ayetler.length)];
-    document.getElementById('ayet-metin').innerText = a.m;
-    document.getElementById('ayet-kaynak').innerText = a.k;
+    // Harita her kaydırıldığında otomatik liste güncelleme
+    map.on('moveend', function() {
+        let c = map.getCenter();
+        camileriGetir(c.lat, c.lng);
+    });
 </script>
 </body>
 </html>
