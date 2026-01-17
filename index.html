@@ -7,14 +7,18 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
-body { margin:0; font-family: Arial, sans-serif; background:#f4f4f4; }
+body {
+  margin:0;
+  font-family: Arial, sans-serif;
+  background:#f4f4f4;
+}
 
 /* ÜST BANT */
 header {
   display:flex;
   align-items:center;
   gap:15px;
-  padding:10px 15px;
+  padding:12px 15px;
   background:#e30a17;
   color:white;
 }
@@ -48,6 +52,7 @@ header h1 {
   background:white;
   padding:10px;
   text-align:center;
+  font-size:14px;
 }
 
 #namaz span {
@@ -61,10 +66,13 @@ header h1 {
   padding:12px;
   font-style:italic;
   text-align:center;
+  font-size:14px;
 }
 
 /* MAP */
-#map { height:55vh; }
+#map {
+  height:55vh;
+}
 
 /* ALT PANEL */
 #panel {
@@ -75,6 +83,16 @@ header h1 {
 #sonuclar li {
   padding:6px 0;
   border-bottom:1px solid #ddd;
+  font-size:14px;
+}
+
+/* FOOTER */
+footer {
+  text-align:center;
+  padding:12px;
+  font-size:13px;
+  color:#555;
+  background:#eee;
 }
 </style>
 </head>
@@ -96,6 +114,10 @@ header h1 {
   <b id="sayac">0 Cami</b>
   <ul id="sonuclar"></ul>
 </div>
+
+<footer>
+  Bu sayfa <b>Seyfettin Gündoğdu</b> tarafından hazırlanmıştır.
+</footer>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
@@ -132,7 +154,7 @@ function namazSaatleri(lat, lon) {
     });
 }
 
-/* GÜNÜN AYETİ */
+/* GÜNÜN AYETİ (MEAL) */
 fetch("https://api.alquran.cloud/v1/ayah/262/tr.diyanet")
 .then(r=>r.json())
 .then(d=>{
@@ -167,8 +189,10 @@ out center;
       const isim = ad.toLowerCase();
 
       if (
-        isim.includes("kilise") || isim.includes("sinagog") ||
-        isim.includes("church") || isim.includes("surp") ||
+        isim.includes("kilise") ||
+        isim.includes("sinagog") ||
+        isim.includes("church") ||
+        isim.includes("surp") ||
         isim.includes("aya ")
       ) return;
 
