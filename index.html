@@ -3,139 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cami Haritası | Bilgi ve Doğrulama</title>
-    
+    <title>Cami Bulucu | Altın Seri</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-    
     <style>
         :root {
-            --ana-renk: #2c3e50;
-            --cami-yesil: #27ae60;
-            --insaat-turuncu: #f39c12;
-            --eksik-kirmizi: #e74c3c;
+            --koyu-kahve: #3d2b1f;
+            --altin: #d4af37;
+            --krem: #fdf5e6;
         }
-
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        body { margin: 0; font-family: 'Segoe UI', serif; height: 100vh; display: flex; flex-direction: column; background: var(--krem); }
         
-        /* Üst Header ve Logo */
-        #header { background: var(--ana-renk); color: white; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 1000; }
-        .logo-alanı { display: flex; align-items: center; gap: 10px; }
-        .logo-ikon { font-size: 24px; color: var(--cami-yesil); }
+        /* Altın Logolu Kahverengi Header */
+        #header { 
+            background: var(--koyu-kahve); 
+            color: var(--altin); 
+            padding: 15px; 
+            text-align: center; 
+            border-bottom: 3px solid var(--altin);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        }
+        .logo-alan { font-size: 1.6em; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 12px; }
         
-        /* Namaz Vakitleri Paneli */
-        #vakitler { background: #f8f9fa; display: flex; justify-content: space-around; padding: 12px; border-bottom: 1px solid #ddd; font-size: 0.85em; }
-        .vakit-kutu { text-align: center; background: white; padding: 5px 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); flex: 1; margin: 0 3px; }
-        .vakit-isim { color: #7f8c8d; display: block; margin-bottom: 2px; }
-        .vakit-saat { font-weight: bold; color: var(--ana-renk); }
+        /* Kahverengi Vakit Paneli */
+        #vakitler { background: #5d4037; display: flex; justify-content: space-around; padding: 10px; border-bottom: 1px solid var(--altin); }
+        .vakit-kutu { background: var(--koyu-kahve); color: var(--altin); padding: 5px; border-radius: 5px; text-align: center; flex: 1; margin: 0 3px; border: 1px solid var(--altin); font-size: 0.8em; }
+        .vakit-saat { display: block; color: white; font-weight: bold; }
 
-        /* Harita Alanı */
-        #map { flex-grow: 1; width: 100%; z-index: 1; }
+        #map { flex-grow: 1; width: 100%; }
 
-        /* Harita Üzerindeki İsim Etiketleri */
-        .cami-etiket {
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid var(--ana-renk);
-            border-radius: 4px;
-            padding: 2px 5px;
-            font-weight: bold;
+        /* Altın Etiketler */
+        .cami-etiket { 
+            background: var(--koyu-kahve); 
+            color: var(--altin); 
+            border: 1px solid var(--altin); 
+            padding: 2px 6px; 
+            font-weight: bold; 
             font-size: 11px;
-            color: #333;
+            border-radius: 4px;
         }
-        
-        /* Popup İçeriği */
-        .popup-card { text-align: center; min-width: 150px; }
-        .popup-card img { width: 100%; border-radius: 5px; margin-top: 5px; }
-        .btn-ekle { background: var(--cami-yesil); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-top: 5px; width: 100%; }
     </style>
 </head>
 <body>
 
 <div id="header">
-    <div class="logo-alanı">
-        <i class="fa-solid fa-mosque logo-ikon"></i>
-        <div>
-            <strong style="display: block; font-size: 1.1em;">CAMİ HARİTASI</strong>
-            <small id="sehir-adi" style="color: #bdc3c7;">Konumunuz Belirleniyor...</small>
-        </div>
-    </div>
-    <div id="user-info">
-        <i class="fa-solid fa-circle-info" style="font-size: 20px; cursor: pointer;"></i>
-    </div>
+    <div class="logo-alan"><i class="fa-solid fa-mosque"></i> CAMİ BULUCU</div>
+    <small style="color: white;" id="durum">Camiler Yükleniyor...</small>
 </div>
 
 <div id="vakitler">
-    <div class="vakit-kutu"><span class="vakit-isim">İmsak</span><span class="vakit-saat">05:42</span></div>
-    <div class="vakit-kutu"><span class="vakit-isim">Öğle</span><span class="vakit-saat">12:55</span></div>
-    <div class="vakit-kutu"><span class="vakit-isim">İkindi</span><span class="vakit-saat">15:38</span></div>
-    <div class="vakit-kutu"><span class="vakit-isim">Akşam</span><span class="vakit-saat">18:12</span></div>
-    <div class="vakit-kutu"><span class="vakit-isim">Yatsı</span><span class="vakit-saat">19:35</span></div>
+    <div class="vakit-kutu">İmsak<span class="vakit-saat">05:42</span></div>
+    <div class="vakit-kutu">Öğle<span class="vakit-saat">12:55</span></div>
+    <div class="vakit-kutu">İkindi<span class="vakit-saat">15:38</span></div>
+    <div class="vakit-kutu">Akşam<span class="vakit-saat">18:12</span></div>
+    <div class="vakit-kutu">Yatsı<span class="vakit-saat">19:35</span></div>
 </div>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-    // 1. Haritayı Başlat ve Kullanıcıyı Bul
-    var map = L.map('map').setView([36.8, 34.6], 10);
-    L.tileLayer('https://{s}.tile.osm.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap'
-    }).addTo(map);
+    // 1. Haritayı Mersin/Mithatpaşa odaklı başlat
+    var map = L.map('map').setView([36.802, 34.628], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    // Cihaz konumunu iste
-    map.locate({setView: true, maxZoom: 14});
-
-    function onLocationFound(e) {
-        L.marker(e.latlng).addTo(map).bindPopup("Şu an buradasınız").openPopup();
-        document.getElementById('sehir-adi').innerText = "Konumunuz: Aktif";
-    }
-    map.on('locationfound', onLocationFound);
-
-    // 2. Örnek Veri Seti (İleride Overpass API ile burası otomatik dolacak)
-    var camiVerisi = [
-        { name: "Muğdat Camii", lat: 36.7865, lon: 34.6045, status: "open", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Mersin_Mugdat_Mosque.jpg/200px-Mersin_Mugdat_Mosque.jpg" },
-        { name: "Hz. Hamza Camii (İsimsiz)", lat: 36.8120, lon: 34.6200, status: "unnamed", img: "" },
-        { name: "Yeni Mahalle Camii (İnşaat)", lat: 36.8000, lon: 34.6500, status: "construction", img: "" }
-    ];
-
-    // 3. Camileri Haritaya Yerleştir
-    camiVerisi.forEach(function(cami) {
-        let renk;
-        let durumMetni;
-
-        if (cami.status === "open") { renk = "#27ae60"; durumMetni = "İbadete Açık"; }
-        else if (cami.status === "construction") { renk = "#f39c12"; durumMetni = "Yapımı Devam Ediyor"; }
-        else { renk = "#e74c3c"; durumMetni = "İsim Doğrulanmadı"; }
-
-        var marker = L.circleMarker([cami.lat, cami.lon], {
-            radius: 10,
-            fillColor: renk,
-            color: "#fff",
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.9
-        }).addTo(map);
-
-        // İsim etiketini ekle
-        marker.bindTooltip(cami.name, {
-            permanent: true, 
-            direction: 'top', 
-            className: 'cami-etiket',
-            offset: [0, -10]
-        });
-
-        // Tıklayınca açılan kart
-        let popupIcerik = `
-            <div class="popup-card">
-                <strong>${cami.name}</strong><br>
-                <small>${durumMetni}</small><br>
-                ${cami.img ? `<img src="${cami.img}">` : `<div style="padding:10px; background:#eee; margin-top:5px; border-radius:5px; font-size:11px;">Fotoğraf Yok</div>`}
-                <button class="btn-ekle" onclick="alert('Yakında: Fotoğraf Yükleme Sistemi')">Fotoğraf/Bilgi Ekle</button>
-            </div>
-        `;
-        marker.bindPopup(popupIcerik);
+    // 2. Gerçek Konumu Bul
+    map.locate({setView: true, maxZoom: 16});
+    map.on('locationfound', function(e) {
+        L.circle(e.latlng, {radius: 40, color: '#d4af37'}).addTo(map).bindPopup("Buradasınız");
+        verileriGetir(map.getBounds());
     });
 
+    // 3. İNTERNETTEN CANLI VERİ ÇEKME (Overpass API)
+    function verileriGetir(bounds) {
+        document.getElementById('durum').innerText = "Aranıyor...";
+        var bbox = bounds.getSouthWest().lat + "," + bounds.getSouthWest().lng + "," + bounds.getNorthEast().lat + "," + bounds.getNorthEast().lng;
+        var query = `[out:json][timeout:25];(node["amenity"="place_of_worship"]["religion"="muslim"](${bbox});way["amenity"="place_of_worship"]["religion"="muslim"](${bbox}););out center;`;
+        var url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
+
+        fetch(url).then(res => res.json()).then(data => {
+            data.elements.forEach(element => {
+                var lat = element.lat || element.center.lat;
+                var lon = element.lon || element.center.lng;
+                var isim = element.tags.name || "İsimsiz Cami";
+                
+                // İsimliyse Altın, İsimsizse Kırmızı nokta
+                var renk = element.tags.name ? "#d4af37" : "#e74c3c";
+
+                var marker = L.circleMarker([lat, lon], {
+                    radius: 10, fillColor: renk, color: "#fff", weight: 2, fillOpacity: 0.9
+                }).addTo(map);
+
+                marker.bindTooltip(isim, {permanent: true, direction: 'top', className: 'cami-etiket', offset: [0, -10]});
+                marker.bindPopup(`<b>${isim}</b><br><button style="background:var(--koyu-kahve); color:var(--altin); border:1px solid var(--altin); padding:5px; border-radius:3px; cursor:pointer; margin-top:10px;" onclick="window.open('https://www.openstreetmap.org/edit?node=${element.id}')">Düzenle / İsim Ekle</button>`);
+            });
+            document.getElementById('durum').innerText = data.elements.length + " Cami Bulundu";
+        });
+    }
+
+    // Haritayı kaydırdıkça yeni camileri getir
+    map.on('moveend', function() { verileriGetir(map.getBounds()); });
 </script>
 </body>
 </html>
