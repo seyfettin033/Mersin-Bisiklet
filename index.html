@@ -3,27 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cami Bulucu | 3KM Yakınındakiler</title>
+    <title>Cami Bulucu | Kesin Sonuç</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <style>
         :root { --ana: #3d2b1f; --altin: #d4af37; --krem: #fdf5e6; }
         body { margin: 0; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; background: var(--krem); overflow: hidden; }
         #header { background: var(--ana); color: var(--altin); padding: 12px; text-align: center; border-bottom: 2px solid var(--altin); }
-        #map { flex-grow: 1; width: 100%; }
-        
-        /* Ayet Bölümü */
-        #ayet-alan { 
-            background: var(--ana); 
-            color: #fff; 
-            padding: 20px; 
-            text-align: center; 
-            border-top: 3px solid var(--altin);
-            box-shadow: 0 -3px 10px rgba(0,0,0,0.4);
-        }
-        #ayet-metin { font-style: italic; display: block; margin-bottom: 8px; font-size: 1.1em; line-height: 1.4; }
-        #ayet-kaynak { color: var(--altin); font-weight: bold; font-size: 0.9em; }
-
+        #map { flex-grow: 1; width: 100%; z-index: 1; }
+        #ayet-alan { background: var(--ana); color: #fff; padding: 15px; text-align: center; border-top: 3px solid var(--altin); z-index: 10; }
+        #ayet-metin { font-style: italic; display: block; margin-bottom: 5px; font-size: 0.95em; }
+        #ayet-kaynak { color: var(--altin); font-weight: bold; font-size: 0.8em; }
         .yol-btn { background: #28a745; color: white; text-decoration: none; padding: 10px; border-radius: 5px; display: block; margin-top: 8px; text-align: center; font-weight: bold; }
         .etiket { background: var(--ana); color: var(--altin); border: 1px solid var(--altin); padding: 2px 5px; font-size: 10px; font-weight: bold; border-radius: 3px; white-space: nowrap; }
     </style>
@@ -31,8 +21,8 @@
 <body>
 
 <div id="header">
-    <div style="font-size: 1.4em; font-weight: bold;"><i class="fa-solid fa-mosque"></i> CAMİ BULUCU</div>
-    <div id="bilgi" style="font-size: 0.75em; color: #ccc; margin-top:4px;">Etrafınızdaki camiler taranıyor...</div>
+    <div style="font-size: 1.3em; font-weight: bold;"><i class="fa-solid fa-mosque"></i> CAMİ BULUCU</div>
+    <div id="bilgi" style="font-size: 0.7em; color: #ccc;">Konum bekleniyor...</div>
 </div>
 
 <div id="map"></div>
@@ -44,26 +34,22 @@
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
+    // Mersin koordinatları ile başlat
     var map = L.map('map').setView([36.81, 34.64], 15); 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     var camiMarkers = L.layerGroup().addTo(map);
 
-    // Ayetleri rastgele seç
     const ayetler = [
-        {m: "“Şüphesiz güçlükle beraber bir kolaylık vardır.”", k: "İnşirah, 5"},
-        {m: "“Allah, sabredenlerle beraberdir.”", k: "Bakara, 153"},
+        {m: "“Allah sabredenlerle beraberdir.”", k: "Bakara, 153"},
         {m: "“Dua edin, duanıza karşılık vereyim.”", k: "Mü'min, 60"},
-        {m: "“Nerede olursanız olun, O sizinle beraberdir.”", k: "Hadid, 4"},
-        {m: "“Rabbin seni terk etmedi ve sana darılmadı.”", k: "Duha, 3"}
+        {m: "“Rabbin seni terk etmedi ve sana darılmadı.”", k: "Duha, 3"},
+        {m: "“İyiliğin karşılığı, yalnız iyiliktir.”", k: "Rahmân, 60"}
     ];
-    function ayetSec() {
-        let r = ayetler[Math.floor(Math.random() * ayetler.length)];
-        document.getElementById('ayet-metin').innerText = r.m;
-        document.getElementById('ayet-kaynak').innerText = r.k;
-    }
-    ayetSec();
+    let r = ayetler[Math.floor(Math.random() * ayetler.length)];
+    document.getElementById('ayet-metin').innerText = r.m;
+    document.getElementById('ayet-kaynak').innerText = r.k;
 
-    // Konumu bul ve 3km çevreyi tara
+    // KONUM İZNİ VE ARAMA
     map.locate({setView: true, maxZoom: 16});
 
     map.on('locationfound', function(e) {
@@ -72,18 +58,31 @@
     });
 
     function verileriGetir(lat, lon) {
-        document.getElementById('bilgi').innerText = "3 KM yakınınız taranıyor...";
+        document.getElementById('bilgi').innerText = "3 KM çapında camiler taranıyor...";
         
-        // ÇOK GENİŞ SORGU: Hem cami, hem mescit hem de isminde 'Cami' geçen her şeyi 3km içinde arar.
-        var query = `[out:json][timeout:30];(node["amenity"~"place_of_worship|mosque"](around:3000,${lat},${lon});way["amenity"~"place_of_worship|mosque"](around:3000,${lat},${lon});node["name"~"Camii|Mescidi"](around:3000,${lat},${lon}););out center;`;
-        var url = "https://overpass.kumi.systems/api/interpreter?data=" + encodeURIComponent(query);
+        // Overpass Turbo Sorgusu - En Geniş Hali
+        var query = `[out:json][timeout:30];
+        (
+          node["amenity"="place_of_worship"](around:3000,${lat},${lon});
+          way["amenity"="place_of_worship"](around:3000,${lat},${lon});
+          node["name"~"Camii|Mescit|Mescidi"](around:3000,${lat},${lon});
+        );
+        out center;`;
+        
+        var url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
 
-        fetch(url).then(res => res.json()).then(data => {
+        fetch(url)
+        .then(res => res.json())
+        .then(data => {
             camiMarkers.clearLayers();
+            if (data.elements.length === 0) {
+                document.getElementById('bilgi').innerText = "Yakında cami bulunamadı. Lütfen haritayı kaydırın.";
+                return;
+            }
             data.elements.forEach(el => {
                 let cLat = el.lat || el.center.lat;
                 let cLon = el.lon || el.center.lng;
-                let isim = el.tags.name || "İsimsiz İbadethane";
+                let isim = el.tags.name || "Cami / Mescit";
                 
                 let marker = L.circleMarker([cLat, cLon], {
                     radius: 12, fillColor: "#d4af37", color: "#fff", weight: 2, fillOpacity: 0.9
@@ -93,12 +92,19 @@
                 marker.bindPopup(`<b>${isim}</b><br><a href="${gMaps}" target="_blank" class="yol-btn">Yol Tarifi Al</a>`);
                 marker.bindTooltip(isim, {permanent: true, direction: 'top', className: 'etiket', offset: [0, -10]});
             });
-            document.getElementById('bilgi').innerText = data.elements.length + " nokta bulundu.";
-        }).catch(() => {
-            document.getElementById('bilgi').innerText = "Hata oluştu, tekrar deneniyor...";
-            setTimeout(() => verileriGetir(lat, lon), 4000);
+            document.getElementById('bilgi').innerText = data.elements.length + " cami bulundu.";
+        })
+        .catch(err => {
+            document.getElementById('bilgi').innerText = "Sunucu yoğun, tekrar deneniyor...";
+            setTimeout(() => verileriGetir(lat, lon), 5000);
         });
     }
+
+    // Harita her hareket ettiğinde yeni noktada 3km tara
+    map.on('moveend', function() {
+        let center = map.getCenter();
+        verileriGetir(center.lat, center.lng);
+    });
 </script>
 </body>
 </html>
