@@ -3,99 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cami Bulucu | Mersin</title>
+    <title>Cami Bulucu | Kesin Liste</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <style>
-        :root { --kahve: #3d2b1f; --altin: #d4af37; --krem: #fdf5e6; }
-        body { margin: 0; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; background: var(--krem); }
-        #header { background: var(--kahve); color: var(--altin); padding: 15px; text-align: center; border-bottom: 3px solid var(--altin); box-shadow: 0 2px 10px rgba(0,0,0,0.5); z-index: 1000; }
-        #durum { background: #5d4037; color: #fff; padding: 8px; text-align: center; font-size: 0.85em; }
+        :root { --ana-renk: #3d2b1f; --vurgu: #d4af37; --krem: #fdf5e6; }
+        body { margin: 0; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; background: var(--krem); }
+        #header { background: var(--ana-renk); color: var(--vurgu); padding: 15px; text-align: center; border-bottom: 3px solid var(--vurgu); }
+        #yakin-bar { background: #5d4037; color: white; padding: 10px; text-align: center; font-size: 0.9em; border-bottom: 1px solid var(--vurgu); }
         #map { flex-grow: 1; width: 100%; }
-        .yol-btn { background: #28a745; color: white; text-decoration: none; padding: 10px; border-radius: 5px; display: block; margin-top: 10px; text-align: center; font-weight: bold; }
-        .etiket { background: var(--kahve); color: var(--altin); border: 1px solid var(--altin); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; white-space: nowrap; }
+        .yol-btn { background: #28a745; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; text-decoration: none; display: block; margin-top: 10px; text-align: center; font-weight: bold; }
+        .cami-etiket { background: var(--ana-renk); color: var(--vurgu); border: 1px solid var(--vurgu); padding: 2px 5px; font-size: 11px; font-weight: bold; border-radius: 3px; white-space: nowrap; }
     </style>
 </head>
 <body>
 
 <div id="header">
-    <div style="font-size: 1.4em; font-weight: bold;"><i class="fa-solid fa-mosque"></i> TÜM CAMİLER</div>
-    <div id="bilgi" style="font-size: 0.8em; opacity: 0.8;">Bölge taranıyor...</div>
+    <div style="font-size: 1.5em; font-weight: bold;"><i class="fa-solid fa-mosque"></i> MÜSLÜMAN CAMİLERİ</div>
+    <div id="durum" style="font-size: 0.7em; color: #ccc; margin-top:5px;">Sistem başlatılıyor...</div>
 </div>
 
-<div id="durum">📍 En yakın ibadethane hesaplanıyor...</div>
+<div id="yakin-bar">📍 En yakın cami tespit ediliyor...</div>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-    var map = L.map('map').setView([36.8121, 34.6415], 14); 
+    var map = L.map('map').setView([36.81, 34.64], 14); // Mersin/Mithatpaşa merkezli başlar
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    var camiLayer = L.layerGroup().addTo(map);
-    var userPos = null;
+    var camiGrubu = L.layerGroup().addTo(map);
+    var kullaniciPos = null;
 
-    // Konumu al
-    map.locate({setView: true, maxZoom: 16});
+    // 1. Konumu Tespit Et
+    map.locate({setView: true, maxZoom: 15});
 
     map.on('locationfound', function(e) {
-        userPos = e.latlng;
+        kullaniciPos = e.latlng;
         L.marker(e.latlng).addTo(map).bindPopup("<b>Buradasınız</b>").openPopup();
-        verileriCek();
+        verileriYukle();
     });
 
-    function verileriCek() {
-        document.getElementById('bilgi').innerText = "İbadethaneler listeleniyor...";
+    map.on('locationerror', function() {
+        document.getElementById('durum').innerText = "Konum bulunamadı. Lütfen izin verin.";
+        verileriYukle();
+    });
+
+    // 2. Müslüman Camilerini ve Mescitleri Getir
+    function verileriYukle() {
+        var durum = document.getElementById('durum');
+        durum.innerText = "Müslüman camileri taranıyor...";
+        
         var b = map.getBounds();
         var bbox = b.getSouthWest().lat + "," + b.getSouthWest().lng + "," + b.getNorthEast().lat + "," + b.getNorthEast().lng;
         
-        // SORGUNUN ÖZÜ: Müslümanlara ait tüm düğüm ve yolları (cami, mescit, türbe camii vb.) getirir
-        var query = `[out:json][timeout:30];(node["religion"="muslim"]["amenity"="place_of_worship"](${bbox});way["religion"="muslim"]["amenity"="place_of_worship"](${bbox}););out center;`;
+        // Filtre: Sadece Müslüman dinine ait (religion=muslim) cami ve mescitleri çeker
+        var query = `[out:json][timeout:30];(node["amenity"~"place_of_worship|mosque"]["religion"="muslim"](${bbox});way["amenity"~"place_of_worship|mosque"]["religion"="muslim"](${bbox}););out center;`;
         var url = "https://overpass.kumi.systems/api/interpreter?data=" + encodeURIComponent(query);
 
         fetch(url).then(res => res.json()).then(data => {
-            camiLayer.clearLayers();
-            let enYakin = { isim: "", d: Infinity };
+            camiGrubu.clearLayers();
+            let enYakin = { ad: "", mesafe: Infinity };
 
             data.elements.forEach(el => {
                 let lat = el.lat || el.center.lat;
                 let lon = el.lon || el.center.lng;
-                let isim = el.tags.name || "İsimsiz Mescit/Cami";
+                let isim = el.tags.name || "İsimsiz Cami/Mescit";
                 
                 let marker = L.circleMarker([lat, lon], {
-                    radius: 10, fillColor: "#d4af37", color: "#fff", weight: 2, fillOpacity: 0.9
-                }).addTo(camiLayer);
+                    radius: 11, fillColor: "#d4af37", color: "#fff", weight: 2, fillOpacity: 0.9
+                }).addTo(camiGrubu);
 
-                // Google Haritalar linki
-                let gMaps = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
-                
+                // Yol Tarifi Butonu (Navigasyon)
+                let googleHaritaLink = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
                 marker.bindPopup(`
                     <div style="text-align:center">
                         <b>${isim}</b><br>
-                        <a href="${gMaps}" target="_blank" class="yol-btn"><i class="fa-solid fa-location-arrow"></i> Yol Tarifi</a>
+                        <a href="${googleHaritaLink}" target="_blank" class="yol-btn">
+                            <i class="fa-solid fa-location-arrow"></i> Yol Tarifi Al
+                        </a>
                     </div>
                 `);
 
-                marker.bindTooltip(isim, {permanent: true, direction: 'top', className: 'etiket', offset: [0, -10]});
+                marker.bindTooltip(isim, {permanent: true, direction: 'top', className: 'cami-etiket', offset: [0, -10]});
 
-                if (userPos) {
-                    let d = userPos.distanceTo([lat, lon]);
-                    if (d < enYakin.d) { enYakin.d = d; enYakin.isim = isim; }
+                if (kullaniciPos) {
+                    let d = kullaniciPos.distanceTo([lat, lon]);
+                    if (d < enYakin.mesafe) { enYakin.mesafe = d; enYakin.ad = isim; }
                 }
             });
 
-            document.getElementById('bilgi').innerText = data.elements.length + " nokta bulundu.";
-            if (enYakin.isim) {
-                let dText = enYakin.d > 1000 ? (enYakin.d/1000).toFixed(1) + " km" : Math.round(enYakin.d) + " m";
-                document.getElementById('durum').innerHTML = `📍 En yakın: <b>${enYakin.isim}</b> (${dText})`;
+            durum.innerText = data.elements.length + " Müslüman camisi bulundu.";
+            if (enYakin.ad) {
+                let dMetin = enYakin.mesafe > 1000 ? (enYakin.mesafe/1000).toFixed(1) + " km" : Math.round(enYakin.mesafe) + " m";
+                document.getElementById('yakin-bar').innerHTML = `📍 En yakın: <b>${enYakin.ad}</b> (${dMetin})`;
             }
         }).catch(() => {
-            document.getElementById('bilgi').innerText = "Sunucu yanıt vermedi, tekrar deneniyor...";
-            setTimeout(verileriCek, 4000);
+            durum.innerText = "Sunucu meşgul, 5 saniye içinde tekrar denenecek...";
+            setTimeout(verileriYukle, 5000);
         });
     }
 
-    map.on('moveend', verileriCek);
+    // Harita her durduğunda yeni bölgeyi tara
+    map.on('moveend', verileriYukle);
 </script>
 </body>
 </html>
