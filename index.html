@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cami Bulucu | Kesin Veri</title>
+    <title>Cami Bulucu | Canlı Takip</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <style>
@@ -11,7 +11,7 @@
         body { margin: 0; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; background: var(--krem); overflow: hidden; }
         #header { background: var(--ana); color: var(--altin); padding: 12px; text-align: center; border-bottom: 2px solid var(--altin); }
         #map { flex-grow: 1; width: 100%; }
-        #ayet-footer { background: var(--ana); color: #fff; padding: 15px; text-align: center; border-top: 3px solid var(--altin); }
+        #footer { background: var(--ana); color: #fff; padding: 15px; text-align: center; border-top: 3px solid var(--altin); }
         .yol-btn { background: #28a745; color: white; text-decoration: none; padding: 10px; border-radius: 5px; display: block; margin-top: 8px; text-align: center; font-weight: bold; }
         .etiket { background: var(--ana); color: var(--altin); border: 1px solid var(--altin); padding: 2px 5px; font-size: 11px; font-weight: bold; border-radius: 3px; white-space: nowrap; }
     </style>
@@ -20,19 +20,19 @@
 
 <div id="header">
     <div style="font-size: 1.4em; font-weight: bold;"><i class="fa-solid fa-mosque"></i> CAMİ BULUCU</div>
-    <div id="bilgi" style="font-size: 0.7em; color: #ccc;">Haritayı kaydırdıkça otomatik tarar...</div>
+    <div id="bilgi" style="font-size: 0.7em; color: #ccc;">Haritayı kaydırın, camiler dökülecektir...</div>
 </div>
 
 <div id="map"></div>
 
-<div id="ayet-footer">
+<div id="footer">
     <div id="ayet-metin" style="font-style: italic; font-size: 0.95em; margin-bottom: 5px;"></div>
     <div id="ayet-kaynak" style="color: var(--altin); font-weight: bold; font-size: 0.8em;"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-    var map = L.map('map', {zoomControl: false}).setView([36.81, 34.64], 15); 
+    var map = L.map('map').setView([36.81, 34.64], 15); 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     var markers = L.layerGroup().addTo(map);
 
@@ -48,21 +48,20 @@
     map.locate({setView: true, maxZoom: 16});
 
     map.on('locationfound', function(e) {
-        L.circle(e.latlng, {radius: 10, color: 'blue'}).addTo(map).bindPopup("Buradasınız");
-        verileriZorla(e.latlng.lat, e.latlng.lng);
+        L.marker(e.latlng).addTo(map).bindPopup("Buradasınız").openPopup();
+        derinArama(e.latlng.lat, e.latlng.lng);
     });
 
-    function verileriZorla(lat, lon) {
-        document.getElementById('bilgi').innerText = "3 KM çapı en ince detayına kadar taranıyor...";
+    function derinArama(lat, lon) {
+        document.getElementById('bilgi').innerText = "Bölgedeki tüm kayıtlar taranıyor...";
         
-        // SÜPER SORGU: İsmi içinde Cami, Camii, Mescit geçen ne varsa her şeyi (alan, yol, nokta) getirir.
+        // Bu sorgu isminde Cami geçen her şeyi zorla bulur
         var query = `[out:json][timeout:30];
         (
-          node(around:3000,${lat},${lon})["amenity"~"place_of_worship|mosque"];
-          way(around:3000,${lat},${lon})["amenity"~"place_of_worship|mosque"];
           node(around:3000,${lat},${lon})["name"~"Cami|Camii|Mescit|Mescidi"];
           way(around:3000,${lat},${lon})["name"~"Cami|Camii|Mescit|Mescidi"];
-          relation(around:3000,${lat},${lon})["name"~"Cami|Camii|Mescit|Mescidi"];
+          node(around:3000,${lat},${lon})["amenity"~"place_of_worship|mosque"];
+          way(around:3000,${lat},${lon})["amenity"~"place_of_worship|mosque"];
         );
         out center;`;
         
@@ -73,24 +72,24 @@
             data.elements.forEach(el => {
                 let cLat = el.lat || el.center.lat;
                 let cLon = el.lon || el.center.lng;
-                let isim = el.tags.name || "İbadethane";
+                let isim = el.tags.name || "Cami / Mescit";
                 
                 let m = L.circleMarker([cLat, cLon], {
                     radius: 12, fillColor: "#d4af37", color: "#fff", weight: 2, fillOpacity: 0.9
                 }).addTo(markers);
 
                 let gMaps = `https://www.google.com/maps/dir/?api=1&destination=${cLat},${cLon}`;
-                m.bindPopup(`<b>${isim}</b><br><a href="${gMaps}" target="_blank" class="yol-btn">Hemen Git</a>`);
+                m.bindPopup(`<b>${isim}</b><br><a href="${gMaps}" target="_blank" class="yol-btn">Yol Tarifi Al</a>`);
                 m.bindTooltip(isim, {permanent: true, direction: 'top', className: 'etiket', offset: [0, -10]});
             });
-            document.getElementById('bilgi').innerText = data.elements.length + " cami/mescit listelendi.";
+            document.getElementById('bilgi').innerText = data.elements.length + " nokta bulundu.";
         });
     }
 
-    // EKRANI KAYDIRDIĞINDA OTOMATİK TARAMA
+    // Haritayı her kaydırdığında yeni merkezden tekrar ara
     map.on('moveend', function() {
         let c = map.getCenter();
-        verileriZorla(c.lat, c.lng);
+        derinArama(c.lat, c.lng);
     });
 </script>
 </body>
