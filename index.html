@@ -3,149 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Türkiye Cami Rehberi</title>
+    <title>Cami Rehberi Pro | Excel Destekli</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        :root { --ana: #3d2b1f; --altin: #d4af37; --krem: #fdf5e6; --beyaz: #ffffff; }
+        :root { --ana: #3d2b1f; --altin: #d4af37; --krem: #fdf5e6; --beyaz: #ffffff; --yesil: #28a745; }
         body { margin: 0; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; background: var(--krem); overflow: hidden; }
         
-        #header { background: var(--ana); color: var(--altin); padding: 15px; text-align: center; border-bottom: 3px solid var(--altin); }
+        #header { background: var(--ana); color: var(--altin); padding: 10px; text-align: center; border-bottom: 3px solid var(--altin); }
         
-        /* Gelişmiş Arama Paneli */
-        .arama-paneli { background: var(--beyaz); padding: 10px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1001; }
-        .satir { display: flex; gap: 5px; }
-        select, input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid var(--altin); font-size: 14px; outline: none; }
-        .bul-btn { background: var(--ana); color: var(--altin); border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .kontrol-merkezi { background: var(--beyaz); padding: 10px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1001; }
+        .arama-satiri { display: flex; gap: 5px; }
+        input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #ccc; outline: none; }
+        .btn { padding: 10px 15px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+        .btn-ara { background: var(--ana); color: var(--altin); }
+        .btn-excel { background: var(--yesil); color: white; width: 100%; justify-content: center; margin-top: 5px; }
 
-        /* İçerik Alanı */
         #map { height: 35vh; width: 100%; border-bottom: 2px solid var(--altin); }
-        #liste-alani { flex: 1; overflow-y: auto; background: var(--beyaz); }
+        #liste-konteynir { flex: 1; overflow-y: auto; background: var(--beyaz); }
         
-        .sonuc-ozet { padding: 10px; background: #f8f8f8; font-size: 0.85em; color: #555; border-bottom: 1px solid #eee; font-weight: bold; }
-        .cami-kart { 
-            padding: 15px; border-bottom: 1px solid #eee; display: flex; 
-            justify-content: space-between; align-items: center; transition: 0.2s;
-        }
-        .cami-kart:active { background: #f0f0f0; }
-        .isim { font-weight: bold; color: var(--ana); font-size: 1em; }
-        .alt-bilgi { font-size: 0.8em; color: #888; margin-top: 4px; }
-        .git-btn { background: #28a745; color: white; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; font-size: 0.85em; }
-
-        #yukleniyor { text-align: center; padding: 40px; color: #999; display: none; }
+        .bilgi-cubugu { padding: 8px; background: #f0f0f0; font-size: 0.8em; color: #444; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; }
+        .cami-kart { padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .isim { font-weight: bold; color: var(--ana); }
+        .nav-btn { background: #007bff; color: white; text-decoration: none; padding: 8px 12px; border-radius: 6px; font-size: 0.8em; }
     </style>
 </head>
 <body>
 
 <div id="header">
-    <div style="font-size: 1.3em; font-weight: bold;"><i class="fa-solid fa-mosque"></i> CAMİ BULUCU</div>
+    <div style="font-size: 1.2em; font-weight: bold;"><i class="fa-solid fa-mosque"></i> CAMİ BULUCU</div>
 </div>
 
-<div class="arama-paneli">
-    <div class="satir">
-        <input type="text" id="sehirInput" placeholder="Şehir veya İlçe yazın (Örn: Kozan)">
-        <button class="bul-btn" onclick="bolgeAra()"><i class="fa-solid fa-magnifying-glass"></i></button>
+<div class="kontrol-merkezi">
+    <div class="arama-satiri">
+        <input type="text" id="bolgeGirdi" placeholder="İl, İlçe veya Mahalle (Örn: Mersin Akdeniz)">
+        <button class="btn btn-ara" onclick="konumGit()"><i class="fa-solid fa-location-arrow"></i></button>
     </div>
-    <div style="font-size: 11px; color: #666; text-align: center;">Haritayı kaydırdığınız her yerde otomatik listeleme yapar.</div>
+    <button class="btn btn-excel" onclick="excelIndir()">
+        <i class="fa-solid fa-file-excel"></i> LİSTEYİ EXCEL OLARAK İNDİR
+    </button>
 </div>
 
 <div id="map"></div>
 
-<div id="liste-alani">
-    <div id="sonuc-ozet" class="sonuc-ozet">Lütfen bir bölge arayın veya konuma izin verin.</div>
-    <div id="yukleniyor"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><br><br>Camiler getiriliyor...</div>
+<div id="liste-konteynir">
+    <div class="bilgi-cubugu">
+        <span id="durum">Bağlanıyor...</span>
+        <span id="sayac">0 Cami</span>
+    </div>
     <div id="sonuclar"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-    var map = L.map('map', {zoomControl: false}).setView([38.9637, 35.2433], 6); // Türkiye Geneli
+    var map = L.map('map', {zoomControl: false}).setView([36.81, 34.64], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     var markers = L.layerGroup().addTo(map);
+    var mevcutVeriler = []; // Excel için verileri burada tutacağız
 
-    // Otomatik Konum Bulma
-    map.locate({setView: true, maxZoom: 14});
-    map.on('locationfound', e => camileriGetir(e.latlng.lat, e.latlng.lng));
+    // Başlangıç: Mevcut konumu al
+    map.locate({setView: true, maxZoom: 15});
+    map.on('locationfound', e => verileriYukle(e.latlng.lat, e.latlng.lng));
 
-    // Manuel Bölge Arama (Nominatim API kullanarak koordinat bulur)
-    function bolgeAra() {
-        let q = document.getElementById('sehirInput').value;
+    function konumGit() {
+        let q = document.getElementById('bolgeGirdi').value;
         if(!q) return;
-        
         fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q},Turkey`)
-        .then(res => res.json())
-        .then(data => {
+        .then(res => res.json()).then(data => {
             if(data.length > 0) {
-                let lat = data[0].lat;
-                let lon = data[0].lon;
-                map.setView([lat, lon], 14);
-                camileriGetir(lat, lon);
-            } else {
-                alert("Bölge bulunamadı!");
+                map.setView([data[0].lat, data[0].lon], 15);
+                verileriYukle(data[0].lat, data[0].lon);
             }
         });
     }
 
-    // Camileri Getirme (Overpass API)
-    function camileriGetir(lat, lon) {
-        document.getElementById('yukleniyor').style.display = "block";
-        document.getElementById('sonuclar').innerHTML = "";
+    function verileriYukle(lat, lon) {
+        document.getElementById('durum').innerText = "Taranıyor...";
         
-        // Türkiye geneli en kapsamlı sorgu (4km çap)
         var query = `[out:json][timeout:30];
         (
-          node(around:4000,${lat},${lon})["amenity"~"place_of_worship|mosque"];
-          way(around:4000,${lat},${lon})["amenity"~"place_of_worship|mosque"];
-          node(around:4000,${lat},${lon})["name"~"Cami|Camii|Mescit"];
-          way(around:4000,${lat},${lon})["name"~"Cami|Camii|Mescit"];
+          node(around:3500,${lat},${lon})["amenity"~"place_of_worship|mosque"];
+          way(around:3500,${lat},${lon})["amenity"~"place_of_worship|mosque"];
+          node(around:3500,${lat},${lon})["name"~"Cami|Camii|Mescit"];
+          way(around:3500,${lat},${lon})["name"~"Cami|Camii|Mescit"];
         );
         out center;`;
 
         fetch("https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query))
         .then(res => res.json())
         .then(data => {
-            document.getElementById('yukleniyor').style.display = "none";
             markers.clearLayers();
+            mevcutVeriler = [];
             let html = "";
             
-            if(data.elements.length === 0) {
-                document.getElementById('sonuc-ozet').innerText = "Bu bölgede cami kaydı bulunamadı.";
-                return;
-            }
-
-            document.getElementById('sonuc-ozet').innerText = `Bu bölgede ${data.elements.length} cami/mescit listelendi.`;
-
-            data.elements.sort((a,b) => (a.tags.name || "").localeCompare(b.tags.name || ""));
-
             data.elements.forEach(el => {
                 let cLat = el.lat || el.center.lat;
                 let cLon = el.lon || el.center.lng;
-                let ad = el.tags.name || "İbadethane / Mescit";
+                let ad = el.tags.name || "İsimsiz İbadethane";
                 
-                // Haritaya işaretçi
-                L.circleMarker([cLat, cLon], {radius: 9, fillColor: "#d4af37", color: "#fff", weight: 2, fillOpacity: 0.9}).addTo(markers).bindPopup(ad);
+                // Veriyi kaydet (Excel için)
+                mevcutVeriler.push({ "Cami Adı": ad, "Enlem": cLat, "Boylam": cLon, "Tür": el.tags.amenity || "Belirtilmemiş" });
 
-                // Listeye kart
+                L.circleMarker([cLat, cLon], {radius: 8, fillColor: "#d4af37", color: "#fff", weight: 2, fillOpacity: 0.9}).addTo(markers).bindPopup(ad);
+
                 html += `
                     <div class="cami-kart">
-                        <div style="flex:1; padding-right:10px;">
+                        <div>
                             <div class="isim">${ad}</div>
-                            <div class="alt-bilgi"><i class="fa-solid fa-location-dot"></i> Türkiye Geneli / Kayıtlı Bölge</div>
+                            <div style="font-size:0.75em; color:#999;">Mersin / Akdeniz / Türkiye</div>
                         </div>
-                        <a href="https://www.google.com/maps/dir/?api=1&destination=${cLat},${cLon}" target="_blank" class="git-btn">NAVİGASYON</a>
+                        <a href="https://www.google.com/maps?q=${cLat},${cLon}" target="_blank" class="nav-btn">Yol Tarifi</a>
                     </div>`;
             });
+            
             document.getElementById('sonuclar').innerHTML = html;
-        }).catch(() => {
-            document.getElementById('yukleniyor').innerText = "Hata oluştu, lütfen tekrar deneyin.";
+            document.getElementById('durum').innerText = "Güncel";
+            document.getElementById('sayac').innerText = data.elements.length + " Cami";
         });
     }
 
-    // Harita her kaydırıldığında otomatik liste güncelleme
-    map.on('moveend', function() {
+    // Harita hareket ettikçe SÜREKLİ GÜNCELLE
+    map.on('moveend', () => {
         let c = map.getCenter();
-        camileriGetir(c.lat, c.lng);
+        verileriYukle(c.lat, c.lng);
     });
+
+    // EXCEL İNDİRME FONKSİYONU
+    function excelIndir() {
+        if(mevcutVeriler.length === 0) {
+            alert("Listede indirilecek veri bulunamadı!");
+            return;
+        }
+        const ws = XLSX.utils.json_to_sheet(mevcutVeriler);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Camiler");
+        XLSX.writeFile(wb, "Cami_Listesi.xlsx");
+    }
 </script>
 </body>
 </html>
