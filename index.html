@@ -1,71 +1,162 @@
-function verileriYukle(lat, lon) {
-    const durumElemani = document.getElementById('durum');
-    durumElemani.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor...';
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Yakınımdaki Camiler</title>
 
-    const query = `
-    [out:json][timeout:25];
-    (
-      node["amenity"="place_of_worship"]["religion"="muslim"](around:2000,${lat},${lon});
-      way["amenity"="place_of_worship"]["religion"="muslim"](around:2000,${lat},${lon});
-      relation["amenity"="place_of_worship"]["religion"="muslim"](around:2000,${lat},${lon});
-    );
-    out center;
-    `;
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    fetch("https://overpass-api.de/api/interpreter", {
-        method: "POST",
-        body: "data=" + encodeURIComponent(query)
-    })
-    .then(res => {
-        if (!res.ok) throw new Error(res.status);
-        return res.json();
-    })
-    .then(data => {
-        if (markers) markers.clearLayers();
-        mevcutVeriler = [];
-        const benzersiz = new Set();
-        let html = "";
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
 
-        if (!data.elements?.length) {
-            durumElemani.innerText = "Bu bölgede kayıt bulunamadı.";
-            return;
-        }
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+/>
 
-        data.elements.forEach(el => {
-            const cLat = el.lat || el.center?.lat;
-            const cLon = el.lon || el.center?.lng;
-            if (!cLat || !cLon) return;
-
-            const ad = el.tags?.name || "İsimsiz İbadethane";
-            const key = ad + cLat.toFixed(5) + cLon.toFixed(5);
-            if (benzersiz.has(key)) return;
-            benzersiz.add(key);
-
-            mevcutVeriler.push({ "Cami Adı": ad, "Enlem": cLat, "Boylam": cLon });
-
-            L.marker([cLat, cLon])
-                .addTo(markers)
-                .bindPopup(`<strong>${ad}</strong><br>
-                    <a target="_blank"
-                       href="https://www.google.com/maps/dir/?api=1&destination=${cLat},${cLon}">
-                       📍 Yol Tarifi
-                    </a>`);
-
-            html += `
-            <div class="cami-kart">
-                <div class="isim">${ad}</div>
-                <a target="_blank"
-                   href="https://www.google.com/maps/dir/?api=1&destination=${cLat},${cLon}"
-                   class="nav-btn">Yol Tarifi</a>
-            </div>`;
-        });
-
-        document.getElementById('sonuclar').innerHTML = html;
-        document.getElementById('sayac').innerText = mevcutVeriler.length + " Cami";
-        durumElemani.innerText = "Güncel";
-    })
-    .catch(err => {
-        console.error(err);
-        durumElemani.innerText = "Hata: Sunucuya erişilemedi.";
-    });
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
 }
+
+#map {
+  height: 60vh;
+}
+
+.panel {
+  padding: 10px;
+  background: #f9f9f9;
+}
+
+#durum {
+  font-size: 14px;
+  color: #444;
+}
+
+#sayac {
+  font-weight: bold;
+  margin: 6px 0;
+}
+
+.cami {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid #ddd;
+}
+
+.cami a {
+  text-decoration: none;
+  background: #2c7be5;
+  color: white;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<div class="panel">
+  <div id="durum">Konum alınıyor...</div>
+  <div id="sayac">0 Cami</div>
+  <div id="liste"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+let map;
+let layer = L.layerGroup();
+
+function baslat(lat, lon) {
+  map = L.map('map').setView([lat, lon], 14);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  layer.addTo(map);
+
+  L.marker([lat, lon]).addTo(map)
+    .bindPopup("📍 Buradasınız")
+    .openPopup();
+
+  camileriGetir(lat, lon);
+}
+
+function camileriGetir(lat, lon) {
+  document.getElementById("durum").innerHTML =
+    '<i class="fa fa-spinner fa-spin"></i> Camiler yükleniyor...';
+
+  const sorgu = `
+  [out:json][timeout:25];
+  (
+    node["amenity"="place_of_worship"]["religion"="muslim"](around:2000,${lat},${lon});
+    way["amenity"="place_of_worship"]["religion"="muslim"](around:2000,${lat},${lon});
+  );
+  out center;
+  `;
+
+  fetch("https://overpass-api.de/api/interpreter", {
+    method: "POST",
+    body: "data=" + encodeURIComponent(sorgu)
+  })
+  .then(r => r.json())
+  .then(d => {
+    layer.clearLayers();
+    document.getElementById("liste").innerHTML = "";
+
+    let sayi = 0;
+
+    d.elements.forEach(e => {
+      const la = e.lat || e.center?.lat;
+      const lo = e.lon || e.center?.lng;
+      if (!la || !lo) return;
+
+      sayi++;
+
+      const ad = e.tags?.name || "İsimsiz Cami";
+
+      L.marker([la, lo]).addTo(layer)
+        .bindPopup(ad);
+
+      document.getElementById("liste").innerHTML += `
+        <div class="cami">
+          <span>${ad}</span>
+          <a target="_blank"
+             href="https://www.google.com/maps/dir/?api=1&destination=${la},${lo}">
+             Yol Tarifi
+          </a>
+        </div>
+      `;
+    });
+
+    document.getElementById("sayac").innerText = sayi + " Cami";
+    document.getElementById("durum").innerText = "Hazır";
+  })
+  .catch(() => {
+    document.getElementById("durum").innerText =
+      "Sunucuya ulaşılamadı";
+  });
+}
+
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(
+    p => baslat(p.coords.latitude, p.coords.longitude),
+    () => alert("Konum izni gerekli")
+  );
+} else {
+  alert("Tarayıcı konum desteklemiyor");
+}
+</script>
+
+</body>
+</html>
