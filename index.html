@@ -3,36 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Türkiye Camileri Dijital Rehberi | Profesyonel</title>
+    <title>Türkiye Camileri Dijital Rehberi | Gelişmiş Filtre</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
 
     <style>
-        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-        #map { height: 100vh; width: 100%; }
-        
-        /* WLMT Tarzı Üst Panel */
-        .header-box {
-            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-            z-index: 1000; background: white; padding: 10px 25px;
-            border-radius: 50px; display: flex; align-items: center; gap: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15); border: 2px solid #e74c3c;
-            min-width: 320px; justify-content: center;
+        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; display: flex; }
+        #map { height: 100vh; flex-grow: 1; }
+
+        /* Sol Filtre Paneli */
+        .sidebar {
+            width: 300px; height: 100vh; background: #fff; box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+            z-index: 1001; padding: 20px; display: flex; flex-direction: column; gap: 20px;
         }
-        .flag { width: 25px; border-radius: 2px; }
-        .logo-text { font-weight: 800; color: #2c3e50; font-size: 14px; }
-        .red { color: #e74c3c; }
-        #status { font-size: 11px; color: #666; margin-left: 10px; }
+        .header-brand { display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #e74c3c; padding-bottom: 15px; }
+        .header-brand img { width: 30px; }
+        .header-brand h1 { font-size: 16px; margin: 0; color: #2c3e50; }
+
+        .filter-group { display: flex; flex-direction: column; gap: 8px; }
+        .filter-group label { font-weight: bold; font-size: 13px; color: #7f8c8d; }
+        select { padding: 10px; border-radius: 8px; border: 1px solid #ddd; outline: none; cursor: pointer; }
+
+        .stats { margin-top: auto; padding: 15px; background: #f8f9fa; border-radius: 10px; font-size: 12px; }
+        .red-btn { background: #e74c3c; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .red-btn:hover { background: #c0392b; }
     </style>
 </head>
 <body>
 
-<div class="header-box">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b4/Flag_of_Turkey.svg" class="flag">
-    <div class="logo-text">TÜRKİYE CAMİLERİ <span class="red">DİJİTAL REHBERİ</span></div>
-    <span id="status">Bekleniyor...</span>
+<div class="sidebar">
+    <div class="header-brand">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b4/Flag_of_Turkey.svg" alt="TR">
+        <h1>CAMİ <span style="color:#e74c3c">REHBERİ</span></h1>
+    </div>
+
+    <div class="filter-group">
+        <label>Şehir Seçin</label>
+        <select id="citySelect" onchange="focusCity()">
+            <option value="">Tüm Türkiye</option>
+            <option value="36.80,34.63,12">Mersin</option>
+            <option value="41.01,28.97,11">İstanbul</option>
+            <option value="39.93,32.85,11">Ankara</option>
+            <option value="38.42,27.14,11">İzmir</option>
+            <option value="37.06,37.38,11">Gaziantep</option>
+        </select>
+    </div>
+
+    <div class="filter-group">
+        <label>İlçe / Bölge</label>
+        <select id="districtSelect">
+            <option value="">Önce Şehir Seçin</option>
+        </select>
+    </div>
+
+    <button class="red-btn" onclick="loadData()">Bölgeyi Tara & Getir</button>
+
+    <div class="stats">
+        <strong>Durum:</strong> <span id="status">Haritayı hareket ettirin</span><br>
+        <strong>Görünür Cami:</strong> <span id="count">0</span>
+    </div>
 </div>
 
 <div id="map"></div>
@@ -41,52 +72,61 @@
 <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
 
 <script>
-    // 1. Haritayı Başlat
     var map = L.map('map').setView([38.9637, 35.2433], 6);
-
-    // 2. Harita Altlığı (Yüksek Çözünürlüklü)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OSM Verisi | Seyfettin033'
+        attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // 3. Kümeleme (Clustering) - Binlerce camiyi donmadan gösterir
     var markers = L.markerClusterGroup();
     map.addLayer(markers);
-
-    // Daha önce eklenenleri kontrol et (Aynı yerin iki kez çıkmasını engeller)
     var cache = new Set();
 
-    // 4. Overpass API - Gerçek Verileri Çek
-    async function fetchMosques() {
-        if (map.getZoom() < 11) {
-            document.getElementById('status').innerText = "Yaklaşın...";
+    // Şehir seçildiğinde haritayı oraya odakla
+    function focusCity() {
+        var val = document.getElementById('citySelect').value;
+        if(val) {
+            var parts = val.split(',');
+            map.setView([parseFloat(parts[0]), parseFloat(parts[1])], parseInt(parts[2]));
+            loadData();
+        }
+    }
+
+    // Veri Çekme Fonksiyonu (WLMT Mantığı)
+    async function loadData() {
+        if (map.getZoom() < 10) {
+            alert("Lütfen daha fazla yaklaşın (En az Zoom: 10)");
             return;
         }
-        
-        document.getElementById('status').innerText = "Yükleniyor...";
-        const b = map.getBounds();
-        const query = `[out:json];(node["amenity"="place_of_worship"]["religion"="muslim"](${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}););out body;`;
+
+        document.getElementById('status').innerText = "Veriler çekiliyor...";
+        var b = map.getBounds();
+        var query = `[out:json][timeout:25];(node["amenity"="place_of_worship"]["religion"="muslim"](${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}););out body;`;
         
         try {
             const response = await fetch('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query));
             const data = await response.json();
             
+            let newCount = 0;
             data.elements.forEach(el => {
                 if (!cache.has(el.id)) {
                     var m = L.marker([el.lat, el.lon]);
-                    m.bindPopup(`<b>${el.tags.name || "İsimsiz Cami"}</b><br><a href="https://www.google.com/maps?q=${el.lat},${el.lon}" target="_blank">Yol Tarifi</a>`);
+                    m.bindPopup(`<b>${el.tags.name || "İsimsiz Cami"}</b><br><small>${el.tags['addr:street'] || 'Adres bilgisi yok'}</small><br><a href="https://www.google.com/maps?q=${el.lat},${el.lon}" target="_blank">Google Haritalar</a>`);
                     markers.addLayer(m);
                     cache.add(el.id);
+                    newCount++;
                 }
             });
-            document.getElementById('status').innerText = "Güncel";
+            document.getElementById('status').innerText = "Tamamlandı";
+            document.getElementById('count').innerText = cache.size;
         } catch (e) {
-            document.getElementById('status').innerText = "Hata!";
+            document.getElementById('status').innerText = "Bağlantı Hatası!";
         }
     }
 
-    // Harita hareket ettikçe yeni camileri getir
-    map.on('moveend', fetchMosques);
+    // Harita her durduğunda otomatik yükle (isteğe bağlı)
+    map.on('moveend', function() {
+        if(map.getZoom() > 11) document.getElementById('status').innerText = "Yeni bölge için taratın";
+    });
 </script>
 
 </body>
