@@ -3,83 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Türkiye Camileri | Dijital Envanter</title>
+    <title>Türkiye Camileri | Tam Kapsamlı Envanter</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
 
     <style>
-        :root { --ana-renk: #c0392b; --arka-plan: #f8f9fa; }
-        body { margin: 0; display: flex; font-family: 'Segoe UI', Tahoma, sans-serif; height: 100vh; background: var(--arka-plan); }
+        :root { --main-red: #c0392b; }
+        body { margin: 0; display: flex; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
         
-        /* Sol Panel: Gelişmiş Filtreleme */
-        #sidebar { 
-            width: 350px; background: white; border-right: 3px solid var(--ana-renk); 
-            padding: 25px; box-shadow: 5px 0 20px rgba(0,0,0,0.1); z-index: 1000;
-            display: flex; flex-direction: column; overflow-y: auto;
+        /* Sol Kontrol Paneli */
+        #panel { 
+            width: 350px; background: #fff; border-right: 4px solid var(--main-red); 
+            padding: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 15px;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.1);
         }
 
         #map { flex-grow: 1; z-index: 1; }
 
-        .brand { text-align: center; margin-bottom: 30px; }
-        .brand img { width: 50px; margin-bottom: 10px; }
-        .brand h1 { font-size: 20px; color: #2c3e50; margin: 0; letter-spacing: -1px; }
+        .logo { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        .logo h1 { font-size: 18px; margin: 10px 0; color: #2c3e50; }
+        
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 12px; font-weight: bold; color: #7f8c8d; }
+        select { padding: 12px; border-radius: 8px; border: 2px solid #ddd; outline: none; }
 
-        .search-box { margin-bottom: 20px; }
-        input, select { 
-            width: 100%; padding: 12px; border-radius: 8px; border: 1.5px solid #dee2e6; 
-            margin-top: 8px; font-size: 14px; transition: 0.3s;
+        .btn-load { 
+            background: var(--main-red); color: white; border: none; padding: 15px; 
+            border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s;
         }
-        input:focus, select:focus { border-color: var(--ana-renk); outline: none; }
+        .btn-load:hover { background: #a93226; }
 
-        .stats-card { 
-            margin-top: auto; background: #fff5f5; padding: 20px; 
-            border-radius: 12px; border-left: 5px solid var(--ana-renk);
+        #status-card { 
+            margin-top: auto; background: #fdf2f2; padding: 15px; 
+            border-radius: 10px; border: 1px solid #f5c6cb; font-size: 13px;
         }
 
-        /* Harita Elemanları */
-        .btn-go { 
-            display: block; background: var(--ana-renk); color: white; text-align: center; 
-            padding: 10px; border-radius: 6px; text-decoration: none; margin-top: 10px; font-weight: bold;
+        /* Navigasyon Butonu */
+        .btn-nav { 
+            display: block; background: #27ae60; color: white; text-align: center; 
+            padding: 8px; border-radius: 5px; text-decoration: none; margin-top: 10px; font-size: 12px;
         }
-        .cluster-custom { background: var(--ana-renk); color: white; border-radius: 50%; text-align: center; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div id="sidebar">
-    <div class="brand">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b4/Flag_of_Turkey.svg" alt="TR">
-        <h1>TÜRKİYE <span style="color:var(--ana-renk)">CAMİLERİ</span></h1>
-        <small>Dijital Envanter Sistemi</small>
+<div id="panel">
+    <div class="logo">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b4/Flag_of_Turkey.svg" width="40">
+        <h1>TÜRKİYE CAMİLERİ <br><span style="color:var(--main-red)">DİJİTAL ENVANTERİ</span></h1>
     </div>
 
-    <div class="search-box">
-        <label>🔍 İSİM İLE ARA</label>
-        <input type="text" id="nameSearch" placeholder="Cami adı yazın..." oninput="filterData()">
-    </div>
-
-    <div class="filter-box">
-        <label>📍 ŞEHİR SEÇİN</label>
-        <select id="citySelect" onchange="updateDistricts()">
-            <option value="">Tüm Türkiye</option>
-            <option value="Mersin">Mersin</option>
-            <option value="İstanbul">İstanbul</option>
-            <option value="Ankara">Ankara</option>
+    <div class="form-group">
+        <label>İl Seçiniz</label>
+        <select id="ilListesi" onchange="ilceleriGetir()">
+            <option value="">İl Seçin...</option>
         </select>
     </div>
 
-    <div class="filter-box" style="margin-top:15px;">
-        <label>🏢 İLÇE SEÇİN</label>
-        <select id="districtSelect" onchange="filterData()">
-            <option value="">Önce Şehir Seçin</option>
+    <div class="form-group">
+        <label>İlçe Seçiniz</label>
+        <select id="ilceListesi" onchange="konumaGit()">
+            <option value="">Önce İl Seçin</option>
         </select>
     </div>
 
-    <div class="stats-card">
-        <div style="font-size: 13px; color: #666;">Toplam Kayıtlı Eser</div>
-        <div style="font-size: 24px; font-weight: bold; color: var(--ana-renk);" id="totalCount">0</div>
+    <button class="btn-load" onclick="verileriCek()">Bölgeyi Tara ve Getir</button>
+
+    <div id="status-card">
+        <strong>Durum:</strong> <span id="durumMesaj">Seçim yapın...</span><br>
+        <strong>Bulunan Cami:</strong> <span id="camiSayisi">0</span>
     </div>
 </div>
 
@@ -89,79 +83,12 @@
 <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
 
 <script>
-    // 1. HARİTA AYARLARI
-    var map = L.map('map').setView([38.96, 35.24], 6);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+    // 1. HARİTA BAŞLATMA
+    var map = L.map('map').setView([39.0, 35.0], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    var markers = L.markerClusterGroup();
+    map.addLayer(markers);
 
-    var markerCluster = L.markerClusterGroup();
-    map.addLayer(markerCluster);
-
-    // 2. KAPSAMLI VERİ SETİ (Gerçek Koordinatlar)
-    // Buraya binlerce veri eklenebilir.
-    const allData = [
-        {id: 1, city: "Mersin", district: "Yenişehir", name: "Hz. Muğdat Camii", lat: 36.7876, lng: 34.6198, desc: "6 minareli, Cumhuriyet dönemi eseri."},
-        {id: 2, city: "Mersin", district: "Akdeniz", name: "Mersin Ulu Cami", lat: 36.8001, lng: 34.6308, desc: "Şehir merkezinin en köklü camisi."},
-        {id: 3, city: "Mersin", district: "Tarsus", name: "Tarsus Ulu Cami", lat: 36.9161, lng: 34.8942, desc: "1579 yapımı, tarihi doku."},
-        {id: 4, city: "İstanbul", city: "Fatih", name: "Sultanahmet Camii", lat: 41.0054, lng: 28.9768, desc: "Dünyaca ünlü Mavi Cami."},
-        {id: 5, city: "Ankara", district: "Altındağ", name: "Hacı Bayram-ı Veli Camii", lat: 39.9443, lng: 32.8581, desc: "Ankara'nın manevi merkezi."}
-        // ... Veri seti istenildiği kadar uzatılabilir
-    ];
-
-    const districts = {
-        "Mersin": ["Akdeniz", "Yenişehir", "Mezitli", "Toroslar", "Tarsus", "Erdemli", "Silifke", "Anamur"],
-        "İstanbul": ["Fatih", "Üsküdar", "Eyüpsultan", "Beşiktaş"],
-        "Ankara": ["Altındağ", "Çankaya", "Keçiören"]
-    };
-
-    // 3. FONKSİYONLAR
-    function updateDistricts() {
-        const city = document.getElementById('citySelect').value;
-        const dSelect = document.getElementById('districtSelect');
-        dSelect.innerHTML = '<option value="">Tüm İlçeler</option>';
-        
-        if (city && districts[city]) {
-            districts[city].forEach(d => {
-                dSelect.innerHTML += `<option value="${d}">${d}</option>`;
-            });
-            // Şehre odaklan
-            const cityData = allData.filter(x => x.city === city);
-            if(cityData.length > 0) map.setView([cityData[0].lat, cityData[0].lng], 12);
-        }
-        filterData();
-    }
-
-    function filterData() {
-        markerCluster.clearLayers();
-        const city = document.getElementById('citySelect').value;
-        const dist = document.getElementById('districtSelect').value;
-        const search = document.getElementById('nameSearch').value.toLowerCase();
-
-        const filtered = allData.filter(item => {
-            return (city === "" || item.city === city) &&
-                   (dist === "" || item.district === dist) &&
-                   (item.name.toLowerCase().includes(search));
-        });
-
-        filtered.forEach(item => {
-            const marker = L.marker([item.lat, item.lng]);
-            marker.bindPopup(`
-                <div style="width:200px">
-                    <strong style="color:var(--ana-renk)">${item.name}</strong><br>
-                    <small>${item.city} / ${item.district}</small><hr>
-                    <p style="font-size:12px">${item.desc}</p>
-                    <a href="https://www.google.com/maps/dir/?api=1&destination=${item.lat},${item.lng}" target="_blank" class="btn-go">📍 Yol Tarifi</a>
-                </div>
-            `);
-            markerCluster.addLayer(marker);
-        });
-
-        document.getElementById('totalCount').innerText = filtered.length;
-    }
-
-    // Başlangıçta tümünü yükle
-    filterData();
-</script>
-
-</body>
-</html>
-
+    // 2. TÜRKİYE İL VE İLÇE VERİLERİ (Özetlenmiş tam liste mantığı)
+    // Gerçek bir API'den veya statik dosyadan illeri çekiyoruz
+    const iller = ["Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Amasya", "Ankara", "Antalya", "Artvin", "Aydın", "Balıkesir", "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Çanakkale", "Çankırı", "Çorum", "Denizli", "Diyarbakır", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane", "Hakkari", "Hatay", "Isparta", "İçel (Mersin)", "İstanbul", "İzmir", "Kars", "Kastamonu", "Kayseri", "Kırklareli", "Kırşehir", "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa", "Kahramanmaraş", "Mardin", "Muğla", "Muş", "Nevşehir", "Niğde", "Ordu", "Rize", "Sakarya", "Samsun", "Siirt", "Sinop", "Sivas", "Tekirdağ", "Tokat", "Trabzon", "Tunceli", "Şanlıurfa", "Uşak", "Van", "Yozgat", "Zonguldak", "Aksaray", "Bayburt", "Karaman", "Kırıkkale", "Batman", "Şırnak", "Bartın", "Ardahan", "I
