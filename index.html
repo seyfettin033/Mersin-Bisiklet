@@ -2,90 +2,49 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Türkiye Camileri Dijital Rehberi</title>
-    
+    <title>Mersin Gerçek Zamanlı Cami Haritası</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        #map { height: 100vh; width: 100%; background: #eef2f3; }
-
-        /* Üst Panel Tasarımı */
-        .custom-header {
-            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-            z-index: 1000; background: white; padding: 10px 25px;
-            border-radius: 50px; display: flex; align-items: center; gap: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 2px solid #c0392b;
-            min-width: 320px; justify-content: center;
-        }
-        .flag { width: 30px; border-radius: 3px; }
-        .logo-text { font-weight: bold; font-size: 14px; color: #333; }
-        .logo-text span { color: #c0392b; }
-
-        /* Pop-up Stil */
-        .leaflet-popup-content-wrapper { border-radius: 12px; padding: 5px; }
-        .popup-card img { width: 100%; border-radius: 8px; height: 150px; object-fit: cover; }
-        .popup-card h4 { margin: 8px 0 4px 0; color: #2c3e50; }
-        .btn-go { display: block; background: #c0392b; color: white; text-align: center; 
-                  padding: 8px; border-radius: 6px; text-decoration: none; margin-top: 10px; font-weight: bold; }
+        #map { height: 100vh; width: 100%; }
+        .header { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; background: white; padding: 10px; border-radius: 20px; border: 2px solid red; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div class="custom-header">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b4/Flag_of_Turkey.svg" class="flag">
-    <div class="logo-text">TÜRKİYE CAMİLERİ <span>DİJİTAL REHBERİ</span></div>
-</div>
-
+<div class="header">🇹🇷 MERSİN GERÇEK VERİ HARİTASI</div>
 <div id="map"></div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // Haritayı Mersin merkezli başlat (Hata payını sıfıra indirdik)
     var map = L.map('map').setView([36.80, 34.63], 13);
 
-    // En sağlam harita katmanı
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© Seyfettin033 | OpenStreetMap'
-    }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    // VERİ SETİ (Buraya istediğin kadar cami ekleyebilirsin)
-    var camiler = [
-        {
-            ad: "Muğdat Camii",
-            lat: 36.7876, lng: 34.6198,
-            img: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Mersin_Mugdat_Mosque.jpg/400px-Mersin_Mugdat_Mosque.jpg",
-            not: "Mersin'in simge yapısı, 6 minareli."
-        },
-        {
-            ad: "Hz. Mugdat Cami",
-            lat: 36.7885, lng: 34.6210,
-            img: "https://lh5.googleusercontent.com/p/AF1QipN3-v-B0z_fE0XN",
-            not: "Sahil şeridinde önemli bir ibadethane."
-        },
-        {
-            ad: "Mersin Ulu Cami",
-            lat: 36.7989, lng: 34.6312,
-            img: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Mersin_Ulu_Cami_01.jpg/400px-Mersin_Ulu_Cami_01.jpg",
-            not: "Eski şehir merkezinin kalbinde."
+    // MERSİN SINIRLARI İÇİNDEKİ GERÇEK CAMİLERİ ÇEK
+    async function verileriGetir() {
+        const sorgu = `
+            [out:json][timeout:25];
+            (
+              node["amenity"="place_of_worship"]["religion"="muslim"](36.70,34.40,36.90,34.80);
+            );
+            out body;`;
+        
+        const url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(sorgu);
+        
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            data.elements.forEach(el => {
+                L.marker([el.lat, el.lon]).addTo(map)
+                    .bindPopup(`<b>${el.tags.name || "İsimsiz Cami"}</b><br>Kaynak: OpenStreetMap`);
+            });
+        } catch (e) {
+            console.error("Veri çekilemedi:", e);
         }
-    ];
+    }
 
-    // Markerları Haritaya Bas
-    camiler.forEach(function(item) {
-        var marker = L.marker([item.lat, item.lng]).addTo(map);
-        marker.bindPopup(`
-            <div class="popup-card">
-                <img src="${item.img}">
-                <h4>${item.ad}</h4>
-                <p style="font-size:12px; color:666;">${item.not}</p>
-                <a href="https://www.google.com/maps/dir/?api=1&destination=${item.lat},${item.lng}" target="_blank" class="btn-go">Yol Tarifi Al</a>
-            </div>
-        `);
-    });
-
+    verileriGetir();
 </script>
-
 </body>
 </html>
