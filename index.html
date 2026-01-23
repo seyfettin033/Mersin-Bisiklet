@@ -2,47 +2,92 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Mersin Camileri - Doğrulanmış Konumlar</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Türkiye Camileri Dijital Rehberi | Profesyonel</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+
     <style>
+        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
         #map { height: 100vh; width: 100%; }
+        
+        /* WLMT Tarzı Üst Panel */
         .header-box {
             position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
             z-index: 1000; background: white; padding: 10px 25px;
-            border-radius: 50px; border: 2px solid #e74c3c; font-weight: bold;
+            border-radius: 50px; display: flex; align-items: center; gap: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15); border: 2px solid #e74c3c;
+            min-width: 320px; justify-content: center;
         }
+        .flag { width: 25px; border-radius: 2px; }
+        .logo-text { font-weight: 800; color: #2c3e50; font-size: 14px; }
+        .red { color: #e74c3c; }
+        #status { font-size: 11px; color: #666; margin-left: 10px; }
     </style>
 </head>
 <body>
 
-<div class="header-box">🇹🇷 MERSİN DİJİTAL REHBERİ (Doğrulanmış Veri)</div>
+<div class="header-box">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b4/Flag_of_Turkey.svg" class="flag">
+    <div class="logo-text">TÜRKİYE CAMİLERİ <span class="red">DİJİTAL REHBERİ</span></div>
+    <span id="status">Bekleniyor...</span>
+</div>
+
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-    // Haritayı Mersin merkezli, tam camilerin olduğu sokağa odaklı başlatıyoruz
-    var map = L.map('map').setView([36.795, 34.625], 14);
+<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
 
+<script>
+    // 1. Haritayı Başlat
+    var map = L.map('map').setView([38.9637, 35.2433], 6);
+
+    // 2. Harita Altlığı (Yüksek Çözünürlüklü)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© Seyfettin033'
+        attribution: '© OSM Verisi | Seyfettin033'
     }).addTo(map);
 
-    // RASTGELELİĞİ ÖNLEMEK İÇİN DOĞRULANMIŞ NOKTA ATISI VERİLER
-    // Bu koordinatlar Google Haritalar ile birebir aynıdır.
-    var gercekVeriler = [
-        { ad: "Hz. Muğdat Camii", lat: 36.7876, lng: 34.6198, detay: "6 Minareli simge yapı." },
-        { ad: "Mersin Ulu Cami", lat: 36.8001, lng: 34.6308, detay: "Çarşı merkezindeki tarihi cami." },
-        { ad: "Eski Cami", lat: 36.7975, lng: 34.6285, detay: "Liman bölgesine yakın tarihi cami." },
-        { ad: "Nusratiye Camii", lat: 36.8045, lng: 34.6385, detay: "İstasyon yakınındaki merkezi cami." }
-    ];
+    // 3. Kümeleme (Clustering) - Binlerce camiyi donmadan gösterir
+    var markers = L.markerClusterGroup();
+    map.addLayer(markers);
 
-    gercekVeriler.forEach(function(p) {
-        // Özel kırmızı marker (isteğe bağlı) veya standart mavi marker
-        var marker = L.marker([p.lat, p.lng]).addTo(map);
-        marker.bindPopup(`<b>${p.ad}</b><br>${p.detay}<br>
-        <a href="https://www.google.com/maps?q=${p.lat},${p.lng}" target="_blank">Google'da Gör</a>`);
-    });
+    // Daha önce eklenenleri kontrol et (Aynı yerin iki kez çıkmasını engeller)
+    var cache = new Set();
 
+    // 4. Overpass API - Gerçek Verileri Çek
+    async function fetchMosques() {
+        if (map.getZoom() < 11) {
+            document.getElementById('status').innerText = "Yaklaşın...";
+            return;
+        }
+        
+        document.getElementById('status').innerText = "Yükleniyor...";
+        const b = map.getBounds();
+        const query = `[out:json];(node["amenity"="place_of_worship"]["religion"="muslim"](${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}););out body;`;
+        
+        try {
+            const response = await fetch('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query));
+            const data = await response.json();
+            
+            data.elements.forEach(el => {
+                if (!cache.has(el.id)) {
+                    var m = L.marker([el.lat, el.lon]);
+                    m.bindPopup(`<b>${el.tags.name || "İsimsiz Cami"}</b><br><a href="https://www.google.com/maps?q=${el.lat},${el.lon}" target="_blank">Yol Tarifi</a>`);
+                    markers.addLayer(m);
+                    cache.add(el.id);
+                }
+            });
+            document.getElementById('status').innerText = "Güncel";
+        } catch (e) {
+            document.getElementById('status').innerText = "Hata!";
+        }
+    }
+
+    // Harita hareket ettikçe yeni camileri getir
+    map.on('moveend', fetchMosques);
 </script>
+
 </body>
 </html>
