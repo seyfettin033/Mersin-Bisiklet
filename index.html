@@ -5,98 +5,87 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Türkiye Camileri Dijital Rehberi</title>
     
-    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
-    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
-    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
-        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background: #f0f0f0; }
-        #map { height: 100vh; width: 100%; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        #map { height: 100vh; width: 100%; background: #eef2f3; }
 
-        /* Üst Panel: Bayrak ve Başlık */
-        .header-container {
-            position: absolute; top: 20px; left: 50%;
-            transform: translateX(-50%);
-            z-index: 10; display: flex; align-items: center; gap: 15px;
-            background: white; padding: 12px 25px; border-radius: 50px;
-            box-shadow: 0 4px 25px rgba(0,0,0,0.2);
-            border: 2px solid #e74c3c; width: max-content;
+        /* Üst Panel Tasarımı */
+        .custom-header {
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; background: white; padding: 10px 25px;
+            border-radius: 50px; display: flex; align-items: center; gap: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 2px solid #c0392b;
+            min-width: 320px; justify-content: center;
         }
-        .flag-icon { width: 30px; border-radius: 3px; }
-        .logo-text { font-weight: 800; color: #2c3e50; font-size: 14px; white-space: nowrap; }
-        .highlight { color: #e74c3c; }
-        .status { font-size: 11px; color: #7f8c8d; display: flex; align-items: center; gap: 5px; }
-        .dot { height: 8px; width: 8px; background: #27ae60; border-radius: 50%; display: inline-block; }
+        .flag { width: 30px; border-radius: 3px; }
+        .logo-text { font-weight: bold; font-size: 14px; color: #333; }
+        .logo-text span { color: #c0392b; }
 
-        /* Pop-up Tasarımı */
-        .maplibregl-popup-content { border-radius: 12px; padding: 10px; border: 1px solid #e74c3c; }
-        .popup-img { width: 100%; border-radius: 8px; height: 120px; object-fit: cover; margin-top: 5px; }
-        .btn-dir { display: block; background: #e74c3c; color: white; text-align: center; 
-                   padding: 6px; border-radius: 5px; text-decoration: none; margin-top: 8px; font-size: 12px; }
+        /* Pop-up Stil */
+        .leaflet-popup-content-wrapper { border-radius: 12px; padding: 5px; }
+        .popup-card img { width: 100%; border-radius: 8px; height: 150px; object-fit: cover; }
+        .popup-card h4 { margin: 8px 0 4px 0; color: #2c3e50; }
+        .btn-go { display: block; background: #c0392b; color: white; text-align: center; 
+                  padding: 8px; border-radius: 6px; text-decoration: none; margin-top: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div class="header-container">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b4/Flag_of_Turkey.svg" class="flag-icon">
-    <div class="logo-text">TÜRKİYE CAMİLERİ <span class="highlight">DİJİTAL REHBERİ</span></div>
-    <div class="status"><span class="dot"></span> Canlı Veri</div>
+<div class="custom-header">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b4/Flag_of_Turkey.svg" class="flag">
+    <div class="logo-text">TÜRKİYE CAMİLERİ <span>DİJİTAL REHBERİ</span></div>
 </div>
 
 <div id="map"></div>
 
 <script>
-    // Harita başlatma
-    const map = new maplibregl.Map({
-        container: 'map',
-        // 'positron' stili bazen yüklenmeyebilir, alternatif demo stili ekliyorum
-        style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json', 
-        center: [35.2433, 38.9637], 
-        zoom: 6
+    // Haritayı Mersin merkezli başlat (Hata payını sıfıra indirdik)
+    var map = L.map('map').setView([36.80, 34.63], 13);
+
+    // En sağlam harita katmanı
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© Seyfettin033 | OpenStreetMap'
+    }).addTo(map);
+
+    // VERİ SETİ (Buraya istediğin kadar cami ekleyebilirsin)
+    var camiler = [
+        {
+            ad: "Muğdat Camii",
+            lat: 36.7876, lng: 34.6198,
+            img: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Mersin_Mugdat_Mosque.jpg/400px-Mersin_Mugdat_Mosque.jpg",
+            not: "Mersin'in simge yapısı, 6 minareli."
+        },
+        {
+            ad: "Hz. Mugdat Cami",
+            lat: 36.7885, lng: 34.6210,
+            img: "https://lh5.googleusercontent.com/p/AF1QipN3-v-B0z_fE0XN",
+            not: "Sahil şeridinde önemli bir ibadethane."
+        },
+        {
+            ad: "Mersin Ulu Cami",
+            lat: 36.7989, lng: 34.6312,
+            img: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Mersin_Ulu_Cami_01.jpg/400px-Mersin_Ulu_Cami_01.jpg",
+            not: "Eski şehir merkezinin kalbinde."
+        }
+    ];
+
+    // Markerları Haritaya Bas
+    camiler.forEach(function(item) {
+        var marker = L.marker([item.lat, item.lng]).addTo(map);
+        marker.bindPopup(`
+            <div class="popup-card">
+                <img src="${item.img}">
+                <h4>${item.ad}</h4>
+                <p style="font-size:12px; color:666;">${item.not}</p>
+                <a href="https://www.google.com/maps/dir/?api=1&destination=${item.lat},${item.lng}" target="_blank" class="btn-go">Yol Tarifi Al</a>
+            </div>
+        `);
     });
 
-    // Wikidata'dan cami verilerini çekme
-    async function getMosques() {
-        const sparqlQuery = `
-        SELECT ?item ?itemLabel ?coords ?image WHERE {
-          ?item wdt:P31 wd:Q48298. 
-          ?item wdt:P17 wd:Q43.
-          ?item wdt:P625 ?coords.
-          OPTIONAL { ?item wdt:P18 ?image. }
-          SERVICE wikibase:label { bd:serviceParam wikibase:language "tr". }
-        } LIMIT 300`; // Hız için şimdilik 300
-
-        const url = 'https://query.wikidata.org/sparql?query=' + encodeURIComponent(sparqlQuery);
-        
-        try {
-            const response = await fetch(url, { headers: { 'Accept': 'application/sparql-results+json' } });
-            const data = await response.json();
-            
-            data.results.bindings.forEach(m => {
-                const name = m.itemLabel.value;
-                // Wikidata koordinat formatı: Point(Lon Lat)
-                const rawCoords = m.coords.value.replace('Point(', '').replace(')', '').split(' ');
-                const lon = parseFloat(rawCoords[0]);
-                const lat = parseFloat(rawCoords[1]);
-                const img = m.image ? m.image.value : 'https://via.placeholder.com/200x120?text=Fotoğraf+Yok';
-
-                // Marker Ekleme
-                new maplibregl.Marker({ color: '#e74c3c' })
-                    .setLngLat([lon, lat])
-                    .setPopup(new maplibregl.Popup().setHTML(`
-                        <strong style="color:#2c3e50">${name}</strong>
-                        <img src="${img}" class="popup-img">
-                        <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}" target="_blank" class="btn-dir">Yol Tarifi</a>
-                    `))
-                    .addTo(map);
-            });
-        } catch (err) {
-            console.error("Veri hatası:", err);
-        }
-    }
-
-    map.on('load', getMosques);
 </script>
 
 </body>
 </html>
-
