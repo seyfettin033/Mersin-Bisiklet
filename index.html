@@ -3,72 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Türkiye Camileri Envanteri | Konum Destekli</title>
+    <title>Müslüman Camileri Portalı | Stabil & Sıralı</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
 
     <style>
-        :root { --main-color: #c0392b; --accent-color: #27ae60; }
-        body { margin: 0; display: flex; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
+        :root { --main: #c0392b; --success: #27ae60; }
+        body { margin: 0; display: flex; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; background: #f4f4f4; }
         
         #sidebar { 
-            width: 360px; background: #fff; border-right: 4px solid var(--main-color); 
-            padding: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 12px;
+            width: 380px; background: white; border-right: 4px solid var(--main); 
+            padding: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 15px;
             box-shadow: 5px 0 15px rgba(0,0,0,0.1);
         }
 
         #map { flex-grow: 1; z-index: 1; }
 
-        /* Konum Butonu - Yeni */
-        .btn-location { 
-            background: var(--accent-color); color: white; border: none; padding: 15px; 
-            border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
-            transition: 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        .btn-loc { 
+            background: var(--success); color: white; border: none; padding: 15px; 
+            border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px;
+            box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3); transition: 0.3s;
         }
-        .btn-location:hover { background: #219150; transform: translateY(-2px); }
+        .btn-loc:hover { transform: translateY(-2px); background: #219150; }
 
-        .btn-scan { 
-            background: var(--main-color); color: white; border: none; padding: 15px; 
-            border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s;
+        #list-container { 
+            flex-grow: 1; overflow-y: auto; margin-top: 10px; padding-right: 5px;
         }
-        
-        select, input { padding: 12px; border-radius: 8px; border: 2px solid #ddd; outline: none; width: 100%; box-sizing: border-box; }
-        
-        .status-panel { margin-top: auto; background: #f8f9fa; padding: 15px; border-radius: 10px; font-size: 13px; border-left: 5px solid var(--main-color); }
-        .nav-link { display: block; background: #2c3e50; color: white; text-align: center; padding: 8px; border-radius: 5px; text-decoration: none; margin-top: 10px; font-size: 12px; }
+
+        .cami-item { 
+            background: #fff; border: 1px solid #eee; padding: 12px; border-radius: 8px;
+            margin-bottom: 10px; cursor: pointer; transition: 0.2s; border-left: 4px solid transparent;
+        }
+        .cami-item:hover { border-left-color: var(--main); background: #fdf2f2; }
+        .cami-item h4 { margin: 0 0 5px 0; font-size: 14px; color: #333; }
+        .cami-item span { font-size: 12px; color: var(--main); font-weight: bold; }
+
+        .loader { display: none; text-align: center; color: var(--main); font-weight: bold; padding: 10px; font-size: 13px; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
     <div style="text-align:center;">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b4/Flag_of_Turkey.svg" width="50">
-        <h1 style="font-size:18px; margin:10px 0;">DİJİTAL CAMİ REHBERİ</h1>
+        <h2 style="margin:0; color:var(--main);">MÜSLÜMAN <br>CAMİLERİ</h2>
+        <p style="font-size:11px; color:#666;">En yakın camiler mesafeye göre sıralanır.</p>
     </div>
 
-    <button class="btn-location" onclick="getLocation()">
-        📍 KONUMUMDAN BAŞLA
-    </button>
+    <button class="btn-loc" onclick="startLocation()">📍 KONUMUMU BUL VE SIRALA</button>
 
-    <hr style="border: 0; border-top: 1px solid #eee; margin: 10px 0;">
+    <div id="loader" class="loader">🔄 Veriler Sıralanıyor...</div>
 
-    <div>
-        <label style="font-size:11px; font-weight:bold; color:#7f8c8d;">İL SEÇİMİ</label>
-        <select id="ilSelect" onchange="loadDistricts()"></select>
-    </div>
-
-    <div>
-        <label style="font-size:11px; font-weight:bold; color:#7f8c8d;">İLÇE SEÇİMİ</label>
-        <select id="ilceSelect" onchange="goToRegion()"></select>
-    </div>
-
-    <button class="btn-scan" onclick="fetchOSMData()">📡 BÖLGEYİ TARA VE LİSTELE</button>
-
-    <div class="status-panel">
-        <strong>Durum:</strong> <span id="status">Hazır</span><br>
-        <strong>Görünen Eser:</strong> <span id="count">0</span>
+    <div id="list-container">
+        <p id="info" style="font-size:13px; color:#999; text-align:center;">Konumunuzu paylaştığınızda en yakın camiler burada listelenecek.</p>
     </div>
 </div>
 
@@ -78,80 +66,101 @@
 <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
 
 <script>
-    // 1. HARİTA AYARLARI
     var map = L.map('map').setView([39.0, 35.0], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     var markers = L.markerClusterGroup();
     map.addLayer(markers);
-    var cache = new Set();
 
-    // 2. KONUM FONKSİYONU
-    function getLocation() {
-        document.getElementById('status').innerText = "Konumunuz alınıyor...";
+    var userCoords = null;
+    var allCamiler = [];
+
+    // 1. KONUMU BAŞLAT
+    function startLocation() {
         if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(position => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                map.setView([lat, lng], 14);
-                L.marker([lat, lng], {icon: L.icon({
-                    iconUrl: 'https://cdn-icons-png.flaticon.com/512/1673/1673221.png',
-                    iconSize: [35, 35]
-                })}).addTo(map).bindPopup("<b>Buradasınız</b>").openPopup();
+            navigator.geolocation.getCurrentPosition(pos => {
+                userCoords = [pos.coords.latitude, pos.coords.longitude];
+                map.setView(userCoords, 14);
                 
-                document.getElementById('status').innerText = "Konum bulundu, taranıyor...";
-                fetchOSMData(); // Konum bulununca otomatik tarama başlat
-            }, () => {
-                alert("Konum izni reddedildi veya alınamadı.");
-                document.getElementById('status').innerText = "Konum hatası.";
-            });
+                // Konum İşareti
+                L.circleMarker(userCoords, {radius: 8, color: '#27ae60', fillOpacity: 1}).addTo(map).bindPopup("Siz buradasınız");
+                
+                loadData();
+            }, () => alert("Konum izni verilmedi."));
         }
     }
 
-    // 3. İL/İLÇE VERİTABANI (Basitleştirilmiş tam liste)
-    const iller = ["Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Amasya", "Ankara", "Antalya", "Artvin", "Aydın", "Balıkesir", "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Çanakkale", "Çankırı", "Çorum", "Denizli", "Diyarbakır", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane", "Hakkari", "Hatay", "Isparta", "İçel (Mersin)", "İstanbul", "İzmir", "Kars", "Kastamonu", "Kayseri", "Kırklareli", "Kırşehir", "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa", "Kahramanmaraş", "Mardin", "Muğla", "Muş", "Nevşehir", "Niğde", "Ordu", "Rize", "Sakarya", "Samsun", "Siirt", "Sinop", "Sivas", "Tekirdağ", "Tokat", "Trabzon", "Tunceli", "Şanlıurfa", "Uşak", "Van", "Yozgat", "Zonguldak", "Aksaray", "Bayburt", "Karaman", "Kırıkkale", "Batman", "Şırnak", "Bartın", "Ardahan", "Iğdır", "Yalova", "Karabük", "Kilis", "Osmaniye", "Düzce"];
-    
-    const ilDropdown = document.getElementById('ilSelect');
-    iller.sort().forEach(il => {
-        let opt = document.createElement('option');
-        opt.value = il; opt.text = il;
-        ilDropdown.add(opt);
-    });
+    // 2. VERİLERİ ÇEK VE SIRALA
+    async function loadData() {
+        const loader = document.getElementById('loader');
+        const listContainer = document.getElementById('list-container');
+        loader.style.display = 'block';
 
-    async function goToRegion() {
-        const query = document.getElementById('ilceSelect').value + " " + document.getElementById('ilSelect').value;
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`);
-        const data = await res.json();
-        if(data[0]) map.setView([data[0].lat, data[0].lon], 13);
-    }
-
-    // 4. CANLI OSM VERİ MOTORU
-    async function fetchOSMData() {
-        document.getElementById('status').innerText = "OSM Veritabanı taranıyor...";
         const b = map.getBounds();
-        const overpassQuery = `[out:json][timeout:30];(node["amenity"="place_of_worship"]["religion"="muslim"](${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()});way["amenity"="place_of_worship"]["religion"="muslim"](${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}););out center;`;
-        
+        const query = `[out:json][timeout:25];(node["amenity"="place_of_worship"]["religion"="muslim"](${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()});way["amenity"="place_of_worship"]["religion"="muslim"](${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}););out center;`;
+
         try {
-            const response = await fetch('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(overpassQuery));
-            const result = await response.json();
+            const res = await fetch('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query));
+            const data = await res.json();
             
-            result.elements.forEach(el => {
-                if(!cache.has(el.id)) {
-                    const lat = el.lat || el.center.lat;
-                    const lon = el.lon || el.center.lon;
-                    const name = el.tags.name || "İsimsiz Cami";
-                    
-                    const m = L.marker([lat, lon]);
-                    m.bindPopup(`<b>${name}</b><br><small>Kayıtlı OSM Verisi</small><br><a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}" target="_blank" class="nav-link">📍 Navigasyonu Başlat</a>`);
-                    markers.addLayer(m);
-                    cache.add(el.id);
-                }
+            allCamiler = data.elements.map(el => {
+                const lat = el.lat || el.center.lat;
+                const lon = el.lon || el.center.lon;
+                return {
+                    id: el.id,
+                    name: el.tags.name || "İsimsiz Cami",
+                    lat: lat,
+                    lng: lon,
+                    dist: userCoords ? getDistance(userCoords[0], userCoords[1], lat, lon) : 0
+                };
             });
-            document.getElementById('status').innerText = "Bölge yüklendi.";
-            document.getElementById('count').innerText = cache.size;
+
+            // MESAFEYE GÖRE SIRALA (En Yakın En Üstte)
+            if(userCoords) allCamiler.sort((a, b) => a.dist - b.dist);
+
+            renderUI();
         } catch (e) {
-            document.getElementById('status').innerText = "Hata oluştu.";
+            console.error(e);
+        } finally {
+            loader.style.display = 'none';
         }
     }
+
+    // 3. ARAYÜZÜ ÇİZ
+    function renderUI() {
+        const listContainer = document.getElementById('list-container');
+        listContainer.innerHTML = '';
+        markers.clearLayers();
+
+        allCamiler.forEach(cami => {
+            // Harita Markeri
+            const m = L.marker([cami.lat, cami.lng]);
+            m.bindPopup(`<b>${cami.name}</b><br>Mesafe: ${cami.dist.toFixed(2)} km`);
+            markers.addLayer(m);
+
+            // Liste Öğesi
+            const div = document.createElement('div');
+            div.className = 'cami-item';
+            div.innerHTML = `
+                <h4>${cami.name}</h4>
+                <span>📍 ${cami.dist.toFixed(2)} km uzaklıkta</span>
+            `;
+            div.onclick = () => map.flyTo([cami.lat, cami.lng], 16);
+            listContainer.appendChild(div);
+        });
+    }
+
+    // Haversine Mesafesi Hesaplama
+    function getDistance(lat1, lon1, lat2, lon2) {
+        var R = 6371; // Dünya yarıçapı km
+        var dLat = deg2rad(lat2-lat1);
+        var dLon = deg2rad(lon2-lon1); 
+        var a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
+        return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+    }
+    function deg2rad(deg) { return deg * (Math.PI/180); }
+
+    // Harita hareket ettiğinde yeni bölgeyi yükle
+    map.on('moveend', () => { if(userCoords) loadData(); });
 </script>
 
 </body>
