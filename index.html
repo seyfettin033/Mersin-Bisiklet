@@ -1,198 +1,120 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8">
-<title>TÜRKİYE Camileri</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Türkiye Camileri Envanteri | Pro</title>
+    
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; overflow: hidden; }
+        #map { height: 100vh; width: 100%; }
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+        /* Üst Panel: Bayrak ve Logo */
+        .header-container {
+            position: absolute; top: 20px; left: 20px; z-index: 10;
+            display: flex; align-items: center; gap: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 20px; border-radius: 50px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            border: 2px solid #e74c3c;
+        }
+        .flag-icon { width: 35px; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .logo-text { font-weight: 800; color: #2c3e50; letter-spacing: -0.5px; }
+        .status-dot { height: 10px; width: 10px; background-color: #27ae60; border-radius: 50%; display: inline-block; margin-right: 5px; animation: pulse 2s infinite; }
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
-<style>
-body{margin:0;font-family:Arial;background:#f4f4f4}
-header{background:#e30a17;color:#fff;display:flex;align-items:center;gap:12px;padding:12px}
-.flag{width:48px;height:32px;background:url("https://flagcdn.com/tr.svg") no-repeat center/contain}
-h1{font-size:18px;margin:0}
-#namaz,#ayet{background:#fff;padding:10px;text-align:center;font-size:13px}
-#ayet{background:#fff3cd}
-#map{height:50vh}
-#panel{background:#fff;padding:10px;max-height:35vh;overflow:auto}
-input,button{padding:6px;margin:3px}
-button{cursor:pointer}
-ul{list-style:none;padding:0;margin:0}
-li{border-bottom:1px solid #eee;padding:6px;display:flex;justify-content:space-between;align-items:center}
-.yol{background:#007bff;color:#fff;padding:4px 8px;border-radius:4px;text-decoration:none;font-size:12px}
-footer{text-align:center;font-size:12px;color:#555;padding:12px}
-</style>
+        /* Pop-up Stil */
+        .maplibregl-popup-content { border-radius: 15px; padding: 15px; max-width: 250px; }
+        .popup-img { width: 100%; border-radius: 10px; margin-bottom: 10px; object-fit: cover; height: 150px; }
+        .btn-dir { display: block; background: #e74c3c; color: white; text-align: center; padding: 8px; border-radius: 5px; text-decoration: none; margin-top: 10px; font-weight: bold; }
+    </style>
 </head>
-
 <body>
 
-<header>
-<div class="flag"></div>
-<h1>TÜRKİYE Camileri</h1>
-</header>
-
-<div id="namaz">Namaz vakitleri yükleniyor...</div>
-<div id="ayet">Ayet yükleniyor...</div>
-
-<div style="padding:8px;background:#fff">
-<input id="il" placeholder="İl">
-<input id="ilce" placeholder="İlçe">
-<button onclick="ilIlceAra()">Ara</button>
-<button onclick="pdfIndir()">PDF</button>
-<button onclick="excelIndir()">Excel</button>
+<div class="header-container">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b4/Flag_of_Turkey.svg" class="flag-icon" alt="TR">
+    <div class="logo-text">TÜRKİYE CAMİLERİ <span style="color: #e74c3c;">DİJİTAL REHBERİ</span></div>
+    <div style="margin-left: 20px; font-size: 12px; color: #7f8c8d;">
+        <span class="status-dot"></span> Canlı Veri (Wikidata)
+    </div>
 </div>
 
 <div id="map"></div>
 
-<div id="panel">
-<div><b id="durum">Hazır</b> | <b id="sayac">0 Cami</b></div>
-<ul id="liste"></ul>
-</div>
-
-<footer>
-Bu veri ticari amaçla kullanılamaz.<br>
-Seyfettin Gündoğdu tarafından hazırlanmıştır.
-</footer>
-
 <script>
-let map=L.map("map").setView([39,35],6);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-let markers=L.layerGroup().addTo(map);
+    // Haritayı başlat (Türkiye merkezli)
+    const map = new maplibregl.Map({
+        container: 'map',
+        style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json', // Şık ve sade altlık
+        center: [35.2433, 38.9637], 
+        zoom: 6
+    });
 
-let userLat=0,userLon=0;
-let tumCamiler=[];
-let secilenIl="",secilenIlce="",secilenMahalle="";
+    // Wikidata'dan Türkiye'deki Camileri (Q48298) çeken fonksiyon
+    async function getMosques() {
+        const endpointUrl = 'https://query.wikidata.org/sparql';
+        const sparqlQuery = `
+        SELECT ?item ?itemLabel ?coords ?image WHERE {
+          ?item wdt:P31 wd:Q48298. 
+          ?item wdt:P17 wd:Q43.
+          ?item wdt:P625 ?coords.
+          OPTIONAL { ?item wdt:P18 ?image. }
+          SERVICE wikibase:label { bd:serviceParam wikibase:language "tr". }
+        } LIMIT 500`; // İlk aşamada 500 tane çekiyoruz
 
-/* KONUM */
-navigator.geolocation.getCurrentPosition(p=>{
-userLat=p.coords.latitude;
-userLon=p.coords.longitude;
-map.setView([userLat,userLon],14);
-L.circle([userLat,userLon],{radius:200,color:"blue"}).addTo(map);
-namaz(userLat,userLon);
-camileriYukle(userLat,userLon);
-});
+        const fullUrl = endpointUrl + '?query=' + encodeURIComponent(sparqlQuery);
+        const headers = { 'Accept': 'application/sparql-results+json' };
 
-/* NAMAZ */
-function namaz(lat,lon){
-fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=13`)
-.then(r=>r.json()).then(d=>{
-let t=d.data.timings;
-document.getElementById("namaz").innerHTML=
-`İmsak ${t.Fajr} | Güneş ${t.Sunrise} | Öğle ${t.Dhuhr} | İkindi ${t.Asr} | Akşam ${t.Maghrib} | Yatsı ${t.Isha}`;
-});
-}
+        try {
+            const response = await fetch(fullUrl, { headers });
+            const data = await response.json();
+            
+            data.results.bindings.forEach(mosque => {
+                const name = mosque.itemLabel.value;
+                const coordStr = mosque.coords.value.replace('Point(', '').replace(')', '');
+                const [lon, lat] = coordStr.split(' ');
+                const imgUrl = mosque.image ? mosque.image.value : 'https://via.placeholder.com/300x150?text=Fotoğraf+Yok';
 
-/* AYET */
-fetch("https://api.alquran.cloud/v1/ayah/255/tr.diyanet")
-.then(r=>r.json()).then(d=>{
-document.getElementById("ayet").innerText=d.data.text;
-});
+                // Marker oluştur
+                const popup = new maplibregl.Popup({ offset: 25 }).setHTML(`
+                    <img src="${imgUrl}" class="popup-img">
+                    <strong style="font-size:16px;">${name}</strong>
+                    <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}" target="_blank" class="btn-dir">Yol Tarifi Al</a>
+                `);
 
-/* İL İLÇE */
-function ilIlceAra(){
-secilenIl=il.value;
-secilenIlce=ilce.value;
-fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${secilenIl} ${secilenIlce}`)
-.then(r=>r.json()).then(d=>{
-if(!d[0]) return alert("Bulunamadı");
-userLat=parseFloat(d[0].lat);
-userLon=parseFloat(d[0].lon);
-secilenMahalle=d[0].address?.suburb||"";
-map.setView([userLat,userLon],14);
-camileriYukle(userLat,userLon);
-});
-}
+                new maplibregl.Marker({ color: '#e74c3c' })
+                    .setLngLat([lon, lat])
+                    .setPopup(popup)
+                    .addTo(map);
+            });
+        } catch (err) {
+            console.error('Veri çekilirken hata oluştu:', err);
+        }
+    }
 
-/* CAMİLER */
-function mesafe(a,b,c,d){
-let R=6371;
-let x=(c-a)*Math.PI/180;
-let y=(d-b)*Math.PI/180;
-let h=Math.sin(x/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(y/2)**2;
-return 2*R*Math.asin(Math.sqrt(h));
-}
-
-function camileriYukle(lat,lon){
-markers.clearLayers();
-tumCamiler=[];
-document.getElementById("durum").innerText="Aranıyor...";
-
-let q=`[out:json];
-node["amenity"="place_of_worship"]["religion"="muslim"](around:3000,${lat},${lon});
-out;`;
-
-fetch("https://overpass-api.de/api/interpreter",{method:"POST",body:"data="+encodeURIComponent(q)})
-.then(r=>r.json()).then(d=>{
-d.elements.forEach(e=>{
-let ad=e.tags?.name||"İsimsiz Cami";
-let la=e.lat,lo=e.lon;
-let m=mesafe(lat,lon,la,lo);
-tumCamiler.push({ad,la,lo,mes:m});
-L.marker([la,lo]).addTo(markers)
-.bindPopup(`${ad}<br><a target=_blank href="https://www.google.com/maps/dir/?destination=${la},${lo}">Yol Tarifi</a>`);
-});
-tumCamiler.sort((a,b)=>a.mes-b.mes);
-listele();
-});
-}
-
-function listele(){
-let html="";
-tumCamiler.forEach((c,i)=>{
-html+=`<li>${i+1}. ${c.ad} (${c.mes.toFixed(2)} km)
-<a class="yol" target="_blank"
-href="https://www.google.com/maps/dir/?destination=${c.la},${c.lo}">Git</a></li>`;
-});
-liste.innerHTML=html;
-sayac.innerText=tumCamiler.length+" Cami";
-durum.innerText="Güncel";
-}
-
-/* PDF */
-function pdfIndir(){
-const {jsPDF}=window.jspdf;
-let pdf=new jsPDF();
-pdf.setFontSize(16);
-pdf.text("TÜRKİYE Camileri",10,15);
-pdf.setFontSize(10);
-pdf.text(`İl: ${secilenIl||"-"} İlçe: ${secilenIlce||"-"} Mahalle: ${secilenMahalle||"-"}`,10,23);
-pdf.text("Bu veri ticari amaçla kullanılamaz.",10,29);
-let y=40;
-tumCamiler.forEach((c,i)=>{
-pdf.text(`${i+1}. ${c.ad} - ${c.mes.toFixed(2)} km`,10,y);
-y+=7;
-if(y>280){pdf.addPage();y=20;}
-});
-pdf.save("turkiye_camileri_verisi.pdf");
-}
-
-/* EXCEL */
-function excelIndir(){
-let veri=[
-{"":"TÜRKİYE Camileri"},
-{"":`İl: ${secilenIl||"-"} | İlçe: ${secilenIlce||"-"} | Mahalle: ${secilenMahalle||"-"}`},
-{"":"Bu veri ticari amaçla kullanılamaz."},
-{},
-...tumCamiler.map((c,i)=>({
-"Sıra":i+1,
-"Cami Adı":c.ad,
-"Mesafe (km)":c.mes.toFixed(2),
-"Enlem":c.la,
-"Boylam":c.lo
-}))
-];
-let ws=XLSX.utils.json_to_sheet(veri);
-let wb=XLSX.utils.book_new();
-XLSX.utils.book_append_sheet(wb,ws,"Türkiye Camileri");
-XLSX.writeFile(wb,"turkiye_camileri_verisi.xlsx");
-}
+    map.on('load', () => {
+        getMosques();
+        
+        // Tavsiye: 3D Bina katmanı ekleyerek görselliği artırıyoruz
+        map.addLayer({
+            'id': '3d-buildings',
+            'source': 'composite',
+            'source-layer': 'building',
+            'filter': ['==', 'extrude', 'true'],
+            'type': 'fill-extrusion',
+            'minzoom': 15,
+            'paint': {
+                'fill-extrusion-color': '#aaa',
+                'fill-extrusion-height': ['get', 'height'],
+                'fill-extrusion-base': ['get', 'min_height'],
+                'fill-extrusion-opacity': 0.6
+            }
+        });
+    });
 </script>
 
 </body>
