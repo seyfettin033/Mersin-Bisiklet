@@ -3,60 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Türkiye Camileri Envanteri | Pro</title>
+    <title>Türkiye Camileri Dijital Rehberi</title>
     
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     
     <style>
-        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; overflow: hidden; }
+        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background: #f0f0f0; }
         #map { height: 100vh; width: 100%; }
 
-        /* Üst Panel: Bayrak ve Logo */
+        /* Üst Panel: Bayrak ve Başlık */
         .header-container {
-            position: absolute; top: 20px; left: 20px; z-index: 10;
-            display: flex; align-items: center; gap: 15px;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 10px 20px; border-radius: 50px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            border: 2px solid #e74c3c;
+            position: absolute; top: 20px; left: 50%;
+            transform: translateX(-50%);
+            z-index: 10; display: flex; align-items: center; gap: 15px;
+            background: white; padding: 12px 25px; border-radius: 50px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.2);
+            border: 2px solid #e74c3c; width: max-content;
         }
-        .flag-icon { width: 35px; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .logo-text { font-weight: 800; color: #2c3e50; letter-spacing: -0.5px; }
-        .status-dot { height: 10px; width: 10px; background-color: #27ae60; border-radius: 50%; display: inline-block; margin-right: 5px; animation: pulse 2s infinite; }
+        .flag-icon { width: 30px; border-radius: 3px; }
+        .logo-text { font-weight: 800; color: #2c3e50; font-size: 14px; white-space: nowrap; }
+        .highlight { color: #e74c3c; }
+        .status { font-size: 11px; color: #7f8c8d; display: flex; align-items: center; gap: 5px; }
+        .dot { height: 8px; width: 8px; background: #27ae60; border-radius: 50%; display: inline-block; }
 
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-
-        /* Pop-up Stil */
-        .maplibregl-popup-content { border-radius: 15px; padding: 15px; max-width: 250px; }
-        .popup-img { width: 100%; border-radius: 10px; margin-bottom: 10px; object-fit: cover; height: 150px; }
-        .btn-dir { display: block; background: #e74c3c; color: white; text-align: center; padding: 8px; border-radius: 5px; text-decoration: none; margin-top: 10px; font-weight: bold; }
+        /* Pop-up Tasarımı */
+        .maplibregl-popup-content { border-radius: 12px; padding: 10px; border: 1px solid #e74c3c; }
+        .popup-img { width: 100%; border-radius: 8px; height: 120px; object-fit: cover; margin-top: 5px; }
+        .btn-dir { display: block; background: #e74c3c; color: white; text-align: center; 
+                   padding: 6px; border-radius: 5px; text-decoration: none; margin-top: 8px; font-size: 12px; }
     </style>
 </head>
 <body>
 
 <div class="header-container">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b4/Flag_of_Turkey.svg" class="flag-icon" alt="TR">
-    <div class="logo-text">TÜRKİYE CAMİLERİ <span style="color: #e74c3c;">DİJİTAL REHBERİ</span></div>
-    <div style="margin-left: 20px; font-size: 12px; color: #7f8c8d;">
-        <span class="status-dot"></span> Canlı Veri (Wikidata)
-    </div>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b4/Flag_of_Turkey.svg" class="flag-icon">
+    <div class="logo-text">TÜRKİYE CAMİLERİ <span class="highlight">DİJİTAL REHBERİ</span></div>
+    <div class="status"><span class="dot"></span> Canlı Veri</div>
 </div>
 
 <div id="map"></div>
 
 <script>
-    // Haritayı başlat (Türkiye merkezli)
+    // Harita başlatma
     const map = new maplibregl.Map({
         container: 'map',
-        style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json', // Şık ve sade altlık
+        // 'positron' stili bazen yüklenmeyebilir, alternatif demo stili ekliyorum
+        style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json', 
         center: [35.2433, 38.9637], 
         zoom: 6
     });
 
-    // Wikidata'dan Türkiye'deki Camileri (Q48298) çeken fonksiyon
+    // Wikidata'dan cami verilerini çekme
     async function getMosques() {
-        const endpointUrl = 'https://query.wikidata.org/sparql';
         const sparqlQuery = `
         SELECT ?item ?itemLabel ?coords ?image WHERE {
           ?item wdt:P31 wd:Q48298. 
@@ -64,59 +63,39 @@
           ?item wdt:P625 ?coords.
           OPTIONAL { ?item wdt:P18 ?image. }
           SERVICE wikibase:label { bd:serviceParam wikibase:language "tr". }
-        } LIMIT 500`; // İlk aşamada 500 tane çekiyoruz
+        } LIMIT 300`; // Hız için şimdilik 300
 
-        const fullUrl = endpointUrl + '?query=' + encodeURIComponent(sparqlQuery);
-        const headers = { 'Accept': 'application/sparql-results+json' };
-
+        const url = 'https://query.wikidata.org/sparql?query=' + encodeURIComponent(sparqlQuery);
+        
         try {
-            const response = await fetch(fullUrl, { headers });
+            const response = await fetch(url, { headers: { 'Accept': 'application/sparql-results+json' } });
             const data = await response.json();
             
-            data.results.bindings.forEach(mosque => {
-                const name = mosque.itemLabel.value;
-                const coordStr = mosque.coords.value.replace('Point(', '').replace(')', '');
-                const [lon, lat] = coordStr.split(' ');
-                const imgUrl = mosque.image ? mosque.image.value : 'https://via.placeholder.com/300x150?text=Fotoğraf+Yok';
+            data.results.bindings.forEach(m => {
+                const name = m.itemLabel.value;
+                // Wikidata koordinat formatı: Point(Lon Lat)
+                const rawCoords = m.coords.value.replace('Point(', '').replace(')', '').split(' ');
+                const lon = parseFloat(rawCoords[0]);
+                const lat = parseFloat(rawCoords[1]);
+                const img = m.image ? m.image.value : 'https://via.placeholder.com/200x120?text=Fotoğraf+Yok';
 
-                // Marker oluştur
-                const popup = new maplibregl.Popup({ offset: 25 }).setHTML(`
-                    <img src="${imgUrl}" class="popup-img">
-                    <strong style="font-size:16px;">${name}</strong>
-                    <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}" target="_blank" class="btn-dir">Yol Tarifi Al</a>
-                `);
-
+                // Marker Ekleme
                 new maplibregl.Marker({ color: '#e74c3c' })
                     .setLngLat([lon, lat])
-                    .setPopup(popup)
+                    .setPopup(new maplibregl.Popup().setHTML(`
+                        <strong style="color:#2c3e50">${name}</strong>
+                        <img src="${img}" class="popup-img">
+                        <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}" target="_blank" class="btn-dir">Yol Tarifi</a>
+                    `))
                     .addTo(map);
             });
         } catch (err) {
-            console.error('Veri çekilirken hata oluştu:', err);
+            console.error("Veri hatası:", err);
         }
     }
 
-    map.on('load', () => {
-        getMosques();
-        
-        // Tavsiye: 3D Bina katmanı ekleyerek görselliği artırıyoruz
-        map.addLayer({
-            'id': '3d-buildings',
-            'source': 'composite',
-            'source-layer': 'building',
-            'filter': ['==', 'extrude', 'true'],
-            'type': 'fill-extrusion',
-            'minzoom': 15,
-            'paint': {
-                'fill-extrusion-color': '#aaa',
-                'fill-extrusion-height': ['get', 'height'],
-                'fill-extrusion-base': ['get', 'min_height'],
-                'fill-extrusion-opacity': 0.6
-            }
-        });
-    });
+    map.on('load', getMosques);
 </script>
 
 </body>
 </html>
-
