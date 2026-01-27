@@ -2,86 +2,103 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Türkiye İsimsiz Camiler</title>
+<title>Türkiye Camii Rehberi</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="stylesheet"
-href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-html, body { height:100%; margin:0; }
+html, body {
+    height: 100%;
+    margin: 0;
+}
 
 body {
     font-family: system-ui, -apple-system;
-    background:#f4f5f7;
-    color:#1f2937;
+    background: #f4f5f7;
+    color: #1f2937;
 }
 
 header {
-    background:#ffffff;
-    padding:12px;
-    border-bottom:1px solid #e5e7eb;
+    background: #ffffff;
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
 }
 
 header h1 {
-    margin:0;
-    font-size:18px;
-    color:#14532d;
-    text-align:center;
+    margin: 0;
+    font-size: 18px;
+    color: #14532d;
+    text-align: center;
+}
+
+header small {
+    display: block;
+    text-align: center;
+    color: #6b7280;
+}
+
+.etiket {
+    background: #ecfdf5;
+    color: #065f46;
+    text-align: center;
+    font-size: 12px;
+    padding: 6px;
+    border-bottom: 1px solid #d1fae5;
 }
 
 .filters {
-    display:flex;
-    gap:8px;
-    margin-top:10px;
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
 }
 
 select {
-    flex:1;
-    padding:8px;
-    border-radius:6px;
-    border:1px solid #d1d5db;
-    background:#fff;
-    font-size:14px;
+    flex: 1;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    font-size: 14px;
 }
 
 #map {
-    height: calc(100vh - 110px);
+    height: calc(100vh - 160px);
 }
 
-/* POPUP */
+/* Popup */
 .leaflet-popup-content-wrapper {
-    border-radius:10px;
+    border-radius: 10px;
 }
 
 .popup {
-    font-size:14px;
-    color:#1f2937;
+    font-size: 14px;
 }
 
 .popup b {
-    color:#14532d;
+    color: #14532d;
 }
 
 .popup a {
-    display:block;
-    text-align:center;
-    padding:8px;
-    margin-top:6px;
-    border-radius:6px;
-    text-decoration:none;
-    font-weight:600;
-    font-size:13px;
+    display: block;
+    text-align: center;
+    padding: 8px;
+    margin-top: 6px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 13px;
 }
 
 .osm {
-    background:#166534;
-    color:#ffffff;
+    background: #166534;
+    color: #ffffff;
 }
 
 .google {
-    background:#fde047;
-    color:#000000;
+    background: #fde047;
+    color: #000000;
 }
 </style>
 </head>
@@ -89,58 +106,66 @@ select {
 <body>
 
 <header>
-<h1>🕌 Türkiye İsimsiz Camiler</h1>
+<h1>🕌 Türkiye Camii Rehberi</h1>
+<small>İsimsiz Camiler – OSM Düzeltme Haritası</small>
+</header>
+
+<div class="etiket">
+ℹ️ Bu proje OpenStreetMap verilerinin doğruluğunu artırmak amacıyla, tamamen toplumsal fayda için hazırlanmıştır.
+</div>
 
 <div class="filters">
 <select id="il">
 <option value="">İl seçiniz</option>
-<option value="Istanbul">İstanbul</option>
-<option value="Ankara">Ankara</option>
-<option value="Izmir">İzmir</option>
-<option value="Konya">Konya</option>
-<option value="Bursa">Bursa</option>
-<option value="Antalya">Antalya</option>
-<option value="Adana">Adana</option>
-<option value="Gaziantep">Gaziantep</option>
-<option value="Kayseri">Kayseri</option>
-<option value="Samsun">Samsun</option>
+<option>Adana</option><option>Adıyaman</option><option>Afyonkarahisar</option>
+<option>Ağrı</option><option>Amasya</option><option>Ankara</option>
+<option>Antalya</option><option>Artvin</option><option>Aydın</option>
+<option>Balıkesir</option><option>Bilecik</option><option>Bingöl</option>
+<option>Bitlis</option><option>Bolu</option><option>Burdur</option>
+<option>Bursa</option><option>Çanakkale</option><option>Çankırı</option>
+<option>Çorum</option><option>Denizli</option><option>Diyarbakır</option>
+<option>Edirne</option><option>Elazığ</option><option>Erzincan</option>
+<option>Erzurum</option><option>Eskişehir</option><option>Gaziantep</option>
+<option>Giresun</option><option>Gümüşhane</option><option>Hakkari</option>
+<option>Hatay</option><option>Isparta</option><option>Mersin</option>
+<option>İstanbul</option><option>İzmir</option><option>Kars</option>
+<option>Kastamonu</option><option>Kayseri</option><option>Kırklareli</option>
+<option>Kırşehir</option><option>Kocaeli</option><option>Konya</option>
+<option>Kütahya</option><option>Malatya</option><option>Manisa</option>
+<option>Kahramanmaraş</option><option>Mardin</option><option>Muğla</option>
+<option>Muş</option><option>Nevşehir</option><option>Niğde</option>
+<option>Ordu</option><option>Rize</option><option>Sakarya</option>
+<option>Samsun</option><option>Siirt</option><option>Sinop</option>
+<option>Sivas</option><option>Tekirdağ</option><option>Tokat</option>
+<option>Trabzon</option><option>Tunceli</option><option>Şanlıurfa</option>
+<option>Uşak</option><option>Van</option><option>Yozgat</option>
+<option>Zonguldak</option><option>Aksaray</option><option>Bayburt</option>
+<option>Karaman</option><option>Kırıkkale</option><option>Batman</option>
+<option>Şırnak</option><option>Bartın</option><option>Ardahan</option>
+<option>Iğdır</option><option>Yalova</option><option>Karabük</option>
+<option>Kilis</option><option>Osmaniye</option><option>Düzce</option>
 </select>
 </div>
-</header>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-var map = L.map('map').setView([39,35],6);
+var map = L.map('map').setView([39, 35], 6);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom:19
+    maxZoom: 19
 }).addTo(map);
 
 var layer = L.layerGroup().addTo(map);
 
-var centers = {
-    Istanbul:[41.01,28.97],
-    Ankara:[39.93,32.86],
-    Izmir:[38.42,27.14],
-    Konya:[37.87,32.48],
-    Bursa:[40.19,29.06],
-    Antalya:[36.89,30.71],
-    Adana:[37.00,35.32],
-    Gaziantep:[37.07,37.38],
-    Kayseri:[38.73,35.48],
-    Samsun:[41.29,36.33]
-};
-
-document.getElementById("il").addEventListener("change", function(){
+document.getElementById("il").addEventListener("change", function () {
 
     var il = this.value;
-    if(!il) return;
+    if (!il) return;
 
     layer.clearLayers();
-    map.setView(centers[il], 10);
 
     var query = `
     [out:json][timeout:30];
@@ -153,12 +178,18 @@ document.getElementById("il").addEventListener("change", function(){
     `;
 
     fetch("https://overpass-api.de/api/interpreter", {
-        method:"POST",
-        body:query
+        method: "POST",
+        body: query
     })
-    .then(r=>r.json())
-    .then(data=>{
-        data.elements.forEach(el=>{
+    .then(r => r.json())
+    .then(data => {
+
+        if (data.elements.length === 0) {
+            alert("Bu ilde isimsiz cami bulunamadı.");
+        }
+
+        data.elements.forEach(el => {
+
             var lat = el.lat || el.center.lat;
             var lon = el.lon || el.center.lon;
 
@@ -175,11 +206,11 @@ document.getElementById("il").addEventListener("change", function(){
                 </a>
             </div>`;
 
-            L.circleMarker([lat,lon],{
-                radius:5,
-                color:"#14532d",
-                fillColor:"#22c55e",
-                fillOpacity:0.85
+            L.circleMarker([lat, lon], {
+                radius: 5,
+                color: "#14532d",
+                fillColor: "#22c55e",
+                fillOpacity: 0.85
             })
             .addTo(layer)
             .bindPopup(popup);
