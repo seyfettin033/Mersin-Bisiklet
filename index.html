@@ -2,42 +2,92 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cami Rehberi & Veri Avcısı</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cami Rehberi Pro</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     
     <style>
         :root { --ana: #e30a17; --altin: #d4af37; --beyaz: #ffffff; }
-        body { margin:0; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: #f4f4f4; }
         
-        header { background: var(--ana); color: white; padding: 10px; display: flex; align-items: center; border-bottom: 3px solid #b10812; z-index: 2000; }
-        .flag { width: 30px; height: 20px; background: url('https://flagcdn.com/tr.svg') no-repeat center/contain; margin-right: 10px; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
-        .arama-kapsayici { flex: 1; display: flex; background: white; border-radius: 20px; padding: 2px 10px; align-items: center; }
-        .arama-kapsayici input { border: none; outline: none; flex: 1; padding: 5px; font-size: 14px; }
+        body { 
+            margin:0; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+            background: #f4f4f4; 
+        }
+        
+        header { 
+            background: var(--ana); 
+            color: white; 
+            padding: 10px; 
+            display: flex; 
+            align-items: center; 
+            border-bottom: 3px solid #b10812; 
+            z-index: 2001;
+            height: 60px;
+        }
 
-        #harita-konteynir { position: relative; flex: 1; width: 100%; }
-        #map { height: 100%; width: 100%; z-index: 1; }
+        .arama-grubu { 
+            flex: 1; 
+            display: flex; 
+            background: white; 
+            border-radius: 25px; 
+            padding: 5px 15px; 
+            align-items: center; 
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .arama-grubu input { 
+            border: none; 
+            outline: none; 
+            flex: 1; 
+            height: 30px; 
+            font-size: 16px; /* Mobil odaklanmada zoom yapmaması için 16px */
+        }
 
-        /* BU BÖLGEYİ TARA BUTONU */
+        #harita-konteynir { position: relative; flex: 1; width: 100%; z-index: 1; }
+        #map { height: 100%; width: 100%; }
+
+        /* MOBİL TARA BUTONU */
         #yuzen-tara-btn {
             position: absolute;
-            top: 20px;
+            top: 15px;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 2000;
+            z-index: 1000;
             background: var(--ana);
             color: white;
             border: 2px solid white;
-            padding: 10px 22px;
+            padding: 12px 24px;
             border-radius: 30px;
             font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            cursor: pointer;
-            display: none; /* Harita hareket edince görünecek */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: none;
             font-size: 14px;
+            cursor: pointer;
+            white-space: nowrap;
         }
 
-        #alt-panel { background: var(--beyaz); height: 35vh; overflow-y: auto; border-top: 3px solid var(--altin); z-index
+        /* ALT PANEL */
+        #alt-panel { 
+            background: var(--beyaz); 
+            height: 38vh; 
+            overflow-y: auto; 
+            border-top: 4px solid var(--altin); 
+            z-index: 1000;
+            padding: 0;
+        }
+
+        .vakit-bari { 
+            display: flex; 
+            overflow-x: auto; 
+            background: #333; 
+            color: white; 
+            padding:
