@@ -9,36 +9,79 @@
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-html, body {
-    height: 100%;
-    margin: 0;
-}
+html, body { height:100%; margin:0; }
 
 body {
     font-family: system-ui, -apple-system;
-    background: #f3f4f6;
+    background:#f4f5f7;
+    color:#1f2937;
 }
 
 header {
-    background: #ffffff;
-    padding: 12px;
-    text-align: center;
-    border-bottom: 1px solid #e5e7eb;
+    background:#ffffff;
+    padding:12px;
+    border-bottom:1px solid #e5e7eb;
 }
 
 header h1 {
-    margin: 0;
-    font-size: 18px;
-    color: #166534;
+    margin:0;
+    font-size:18px;
+    color:#14532d;
+    text-align:center;
 }
 
-header small {
-    color: #6b7280;
+.filters {
+    display:flex;
+    gap:8px;
+    margin-top:10px;
+}
+
+select {
+    flex:1;
+    padding:8px;
+    border-radius:6px;
+    border:1px solid #d1d5db;
+    background:#fff;
+    font-size:14px;
 }
 
 #map {
-    width: 100%;
-    height: calc(100vh - 68px);
+    height: calc(100vh - 110px);
+}
+
+/* POPUP */
+.leaflet-popup-content-wrapper {
+    border-radius:10px;
+}
+
+.popup {
+    font-size:14px;
+    color:#1f2937;
+}
+
+.popup b {
+    color:#14532d;
+}
+
+.popup a {
+    display:block;
+    text-align:center;
+    padding:8px;
+    margin-top:6px;
+    border-radius:6px;
+    text-decoration:none;
+    font-weight:600;
+    font-size:13px;
+}
+
+.osm {
+    background:#166534;
+    color:#ffffff;
+}
+
+.google {
+    background:#fde047;
+    color:#000000;
 }
 </style>
 </head>
@@ -47,7 +90,22 @@ header small {
 
 <header>
 <h1>🕌 Türkiye İsimsiz Camiler</h1>
-<small>OSM veri düzeltme haritası</small>
+
+<div class="filters">
+<select id="il">
+<option value="">İl seçiniz</option>
+<option value="Istanbul">İstanbul</option>
+<option value="Ankara">Ankara</option>
+<option value="Izmir">İzmir</option>
+<option value="Konya">Konya</option>
+<option value="Bursa">Bursa</option>
+<option value="Antalya">Antalya</option>
+<option value="Adana">Adana</option>
+<option value="Gaziantep">Gaziantep</option>
+<option value="Kayseri">Kayseri</option>
+<option value="Samsun">Samsun</option>
+</select>
+</div>
 </header>
 
 <div id="map"></div>
@@ -55,61 +113,78 @@ header small {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-// Harita oluştur
-var map = L.map('map').setView([39, 35], 6);
+var map = L.map('map').setView([39,35],6);
 
-// Harita katmanı
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap'
+    maxZoom:19
 }).addTo(map);
 
-// Overpass sorgusu (Türkiye)
-var query = `
-[out:json][timeout:50];
-(
-  node["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](35.8,25.6,42.1,44.8);
-  way["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](35.8,25.6,42.1,44.8);
-);
-out center;
-`;
+var layer = L.layerGroup().addTo(map);
 
-fetch("https://overpass-api.de/api/interpreter", {
-    method: "POST",
-    body: query
-})
-.then(function(res){ return res.json(); })
-.then(function(data){
+var centers = {
+    Istanbul:[41.01,28.97],
+    Ankara:[39.93,32.86],
+    Izmir:[38.42,27.14],
+    Konya:[37.87,32.48],
+    Bursa:[40.19,29.06],
+    Antalya:[36.89,30.71],
+    Adana:[37.00,35.32],
+    Gaziantep:[37.07,37.38],
+    Kayseri:[38.73,35.48],
+    Samsun:[41.29,36.33]
+};
 
-    data.elements.forEach(function(el){
+document.getElementById("il").addEventListener("change", function(){
 
-        var lat = el.lat || el.center.lat;
-        var lon = el.lon || el.center.lon;
+    var il = this.value;
+    if(!il) return;
 
-        var osmLink =
-          "https://www.openstreetmap.org/edit?editor=id#map=19/" + lat + "/" + lon;
+    layer.clearLayers();
+    map.setView(centers[il], 10);
 
-        var googleLink =
-          "https://www.google.com/maps/search/cami/@"+lat+","+lon+",19z";
+    var query = `
+    [out:json][timeout:30];
+    area["name"="${il}"]["admin_level"="4"]->.a;
+    (
+      node["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](area.a);
+      way["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](area.a);
+    );
+    out center;
+    `;
 
-        var popup =
-          "<b>❗ İsimsiz Cami</b><br><br>" +
-          "<a href='"+osmLink+"' target='_blank'>✍️ OSM'de İsim Gir</a><br>" +
-          "<a href='"+googleLink+"' target='_blank'>🔍 Google’da Kontrol</a>";
+    fetch("https://overpass-api.de/api/interpreter", {
+        method:"POST",
+        body:query
+    })
+    .then(r=>r.json())
+    .then(data=>{
+        data.elements.forEach(el=>{
+            var lat = el.lat || el.center.lat;
+            var lon = el.lon || el.center.lon;
 
-        L.circleMarker([lat, lon], {
-            radius: 5,
-            color: "#166534",
-            fillColor: "#16a34a",
-            fillOpacity: 0.9
-        })
-        .addTo(map)
-        .bindPopup(popup);
+            var popup = `
+            <div class="popup">
+                <b>❗ İsimsiz Cami</b>
+                <a class="osm" target="_blank"
+                   href="https://www.openstreetmap.org/edit?editor=id#map=19/${lat}/${lon}">
+                   ✍️ OSM'de İsim Gir
+                </a>
+                <a class="google" target="_blank"
+                   href="https://www.google.com/maps/search/cami/@${lat},${lon},19z">
+                   🔍 Google’da Kontrol
+                </a>
+            </div>`;
+
+            L.circleMarker([lat,lon],{
+                radius:5,
+                color:"#14532d",
+                fillColor:"#22c55e",
+                fillOpacity:0.85
+            })
+            .addTo(layer)
+            .bindPopup(popup);
+        });
     });
-
-})
-.catch(function(err){
-    alert("Veri yüklenemedi: Overpass limiti dolu olabilir.");
 });
 </script>
 
