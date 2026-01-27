@@ -3,55 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cami Rehberi - Sınır Onarıcı</title>
+    <title>Cami Rehberi - Görünürlük Onarıcı</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: sans-serif; }
-        #map { position: absolute; top: 0; bottom: 40%; left: 0; right: 0; z-index: 1; background: #f0f0f0; }
-        #panel { position: absolute; bottom: 0; left: 0; right: 0; height: 40%; background: white; border-top: 4px solid #d4af37; overflow-y: auto; padding: 10px; z-index: 100; }
-        #scan-btn { 
-            position: absolute; top: 15px; left: 50%; transform: translateX(-50%); 
-            z-index: 1000; background: #e30a17; color: white; border: 2px solid white; 
-            padding: 12px 25px; border-radius: 30px; font-weight: bold; cursor: pointer;
+        /* Harita ve Panel Arasındaki Çakışmayı Önleyen Stil */
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #333; }
+        
+        #map { 
+            height: 50vh; /* Ekranın yarısı harita */
+            width: 100%; 
+            z-index: 10; 
         }
-        .status { color: #e30a17; font-weight: bold; text-align: center; margin-bottom: 10px; font-size: 13px; }
-        .card { border: 1px solid #eee; padding: 12px; margin-bottom: 10px; border-radius: 8px; background: #f9f9f9; }
-        .btn-group { display: flex; gap: 5px; margin-top: 10px; }
-        .btn { flex: 1; text-align: center; text-decoration: none; padding: 12px; border-radius: 5px; font-size: 11px; font-weight: bold; color: white; }
+        
+        #panel { 
+            height: 50vh; /* Diğer yarısı liste */
+            width: 100%;
+            background: #ffffff; 
+            overflow-y: scroll; 
+            padding: 15px; 
+            box-sizing: border-box;
+            border-top: 4px solid #d4af37;
+            z-index: 20;
+            position: relative;
+        }
+
+        #scan-btn { 
+            position: fixed; top: 10px; left: 50%; transform: translateX(-50%); 
+            z-index: 1000; background: #e30a17; color: white; border: 2px solid white; 
+            padding: 12px 25px; border-radius: 30px; font-weight: bold; font-size: 16px;
+        }
+
+        .status { color: #e30a17; font-weight: bold; text-align: center; margin-bottom: 15px; background: #fff1f1; padding: 10px; border-radius: 5px; }
+        .card { border: 2px solid #eee; padding: 15px; margin-bottom: 15px; border-radius: 10px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        .btn { flex: 1; text-align: center; text-decoration: none; padding: 12px; border-radius: 5px; font-size: 13px; font-weight: bold; color: white; border: none; }
         .blue { background: #007bff; } .green { background: #28a745; }
     </style>
 </head>
 <body>
 
-<button id="scan-btn" onclick="guvenliTara()">🔍 CAMİLERİ GÖRÜNÜR YAP</button>
+<button id="scan-btn" onclick="tara()">🚀 14+ VERİYİ GÖSTER</button>
+
 <div id="map"></div>
 
 <div id="panel">
-    <div id="status" class="status">Harita yükleniyor, lütfen bekleyin...</div>
+    <div id="status" class="status">Butona basınca 14 nokta burada listelenecek.</div>
     <div id="liste"></div>
 </div>
 
 <script>
-    // Haritayı başlat
-    var map = L.map('map', { zoomControl: false }).setView([37.871, 32.491], 15);
+    // Haritayı başlatırken merkeze odaklan
+    var map = L.map('map', { zoomControl: true }).setView([37.871, 32.491], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     var markerLayer = L.featureGroup().addTo(map);
 
-    // Harita hazır olduğunda durumu güncelle
-    map.whenReady(function() {
-        document.getElementById('status').innerText = "📍 Harita hazır. Sahibata/Konya bölgesindesiniz.";
-    });
-
-    // Global JSONP Fonksiyonu
     window.processOSM = function(data) {
         const status = document.getElementById('status');
         const liste = document.getElementById('liste');
+        
         liste.innerHTML = "";
         markerLayer.clearLayers();
 
         if (!data || !data.elements || data.elements.length === 0) {
-            status.innerText = "❌ Bu bölgede veri bulunamadı.";
+            status.innerText = "❌ Veri içeriği boş geldi.";
             return;
         }
 
@@ -60,50 +75,47 @@
             var lon = el.lon || (el.center ? el.center.lng : null);
             
             if (lat && lon) {
-                var ad = el.tags.name || "İsimsiz İbadethane";
-                L.marker([lat, lon]).addTo(markerLayer).bindPopup(ad);
+                var ad = (el.tags && el.tags.name) ? el.tags.name : "İsimsiz İbadethane";
                 
+                // 1. Haritaya Marker Ekle (Zorlayarak)
+                var m = L.marker([lat, lon]).addTo(markerLayer);
+                m.bindPopup("<b>" + ad + "</b>");
+                
+                // 2. Listeye Kart Ekle (Zorlayarak)
                 var card = document.createElement('div');
                 card.className = 'card';
-                card.innerHTML = '<b>'+ad+'</b><div class="btn-group">' +
-                    '<a href="https://www.google.com/maps/dir/?api=1&destination='+lat+','+lon+'" target="_blank" class="btn blue">YOL TARİFİ</a>' +
-                    '<a href="https://www.openstreetmap.org/edit?'+el.type+'='+el.id+'" target="_blank" class="btn green">DÜZENLE</a>' +
-                '</div>';
+                card.innerHTML = '<div style="font-size:16px; margin-bottom:10px;"><b>' + ad + '</b></div>' +
+                    '<div class="btn-group">' +
+                        '<a href="https://www.google.com/maps/dir/?api=1&destination=' + lat + ',' + lon + '" target="_blank" class="btn blue">YOL TARİFİ</a>' +
+                        '<a href="https://www.openstreetmap.org/edit?' + el.type + '=' + el.id + '" target="_blank" class="btn green">DÜZENLE</a>' +
+                    '</div>';
                 liste.appendChild(card);
             }
         });
-        status.innerText = "✅ " + data.elements.length + " nokta yüklendi.";
+
+        status.innerText = "✅ " + data.elements.length + " nokta başarıyla GÖRÜNÜR yapıldı.";
+        
+        // Markerlar varsa haritayı onlara göre ayarla
         if (markerLayer.getLayers().length > 0) {
-            map.fitBounds(markerLayer.getBounds(), {padding: [20, 20]});
+            map.invalidateSize(); // Harita boyutunu güncelle
+            map.fitBounds(markerLayer.getBounds(), {padding: [30, 30]});
         }
     };
 
-    function guvenliTara() {
-        try {
-            // Sınırların geçerli olup olmadığını kontrol et
-            if (!map.getBounds().isValid()) {
-                document.getElementById('status').innerText = "⚠️ Harita henüz yüklenmedi, 1 saniye bekleyin...";
-                return;
-            }
+    function tara() {
+        const b = map.getBounds();
+        const bbox = b.getSouth() + "," + b.getWest() + "," + b.getNorth() + "," + b.getEast();
+        document.getElementById('status').innerText = "🛰️ 14 veri işleniyor, lütfen bekleyin...";
 
-            const b = map.getBounds();
-            const bbox = b.getSouth() + "," + b.getWest() + "," + b.getNorth() + "," + b.getEast();
-            
-            document.getElementById('status').innerText = "🛰️ Veriler güvenli kanaldan çekiliyor...";
-
-            const query = '[out:json][timeout:25];(node["amenity"="place_of_worship"]["religion"="muslim"](' + bbox + ');way["amenity"="place_of_worship"]["religion"="muslim"](' + bbox + '););out center;';
-            
-            const script = document.createElement('script');
-            script.src = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query) + "&jsonp=processOSM";
-            
-            const old = document.getElementById('osm-script');
-            if (old) old.remove();
-            script.id = 'osm-script';
-            document.body.appendChild(script);
-
-        } catch (e) {
-            document.getElementById('status').innerText = "⚠️ Hata: " + e.message;
-        }
+        const query = '[out:json][timeout:25];(node["amenity"="place_of_worship"]["religion"="muslim"](' + bbox + ');way["amenity"="place_of_worship"]["religion"="muslim"](' + bbox + '););out center;';
+        
+        const script = document.createElement('script');
+        script.src = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query) + "&jsonp=processOSM";
+        
+        const old = document.getElementById('osm-script');
+        if (old) old.remove();
+        script.id = 'osm-script';
+        document.body.appendChild(script);
     }
 </script>
 </body>
