@@ -10,58 +10,73 @@
 <style>
 body {
     margin: 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont;
+    font-family: system-ui, -apple-system;
     background: #f6f7f8;
-    color: #222;
 }
 
 header {
-    padding: 14px;
-    text-align: center;
-    font-weight: 600;
-    background: #ffffff;
+    background: #fff;
+    padding: 10px;
     border-bottom: 1px solid #e0e0e0;
 }
 
-header span {
+.title {
+    text-align: center;
+    font-weight: 600;
     color: #1f7a3a;
+    margin-bottom: 8px;
+}
+
+.filters {
+    display: flex;
+    gap: 8px;
+}
+
+select {
+    flex: 1;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: #fff;
 }
 
 #map {
-    height: calc(100vh - 55px);
-}
-
-.leaflet-popup-content {
-    font-size: 14px;
+    height: calc(100vh - 95px);
 }
 
 .btn {
     display: block;
-    text-align: center;
-    padding: 8px;
+    padding: 7px;
     margin-top: 6px;
+    text-align: center;
     border-radius: 6px;
     text-decoration: none;
     font-weight: 600;
 }
 
-.osm {
-    background: #2e7d32;
-    color: white;
-}
-
-.google {
-    background: #fbbc04;
-    color: black;
-}
+.osm { background:#2e7d32;color:#fff; }
+.google { background:#fbbc04;color:#000; }
 </style>
 </head>
 
 <body>
 
 <header>
-🕌 <span>Türkiye Camii Rehberi</span><br>
-<small>İsimsiz Camiler – OSM Düzeltme Haritası</small>
+    <div class="title">🕌 Türkiye Camii Rehberi</div>
+    <div class="filters">
+        <select id="il">
+            <option value="">İl Seçiniz</option>
+            <option value="Konya">Konya</option>
+            <option value="Ankara">Ankara</option>
+            <option value="İstanbul">İstanbul</option>
+            <option value="İzmir">İzmir</option>
+            <option value="Bursa">Bursa</option>
+        </select>
+
+        <select id="ilce">
+            <option value="">İlçe Seçiniz</option>
+        </select>
+    </div>
 </header>
 
 <div id="map"></div>
@@ -69,54 +84,91 @@ header span {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-// Harita
-var map = L.map('map').setView([39.0, 35.0], 6);
+var map = L.map('map').setView([39,35], 6);
+var markers = [];
 
-// OSM katman
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap'
+    maxZoom: 19
 }).addTo(map);
 
-// Overpass sorgusu (TÜRKİYE)
-var query = `
-[out:json][timeout:60];
-(
-  node["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](35.8,25.6,42.1,44.8);
-  way["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](35.8,25.6,42.1,44.8);
-);
-out center;
-`;
+// İl - İlçe verisi (örnek – genişletilebilir)
+var ilceler = {
+    "Konya": ["Selçuklu","Meram","Karatay"],
+    "Ankara": ["Çankaya","Keçiören","Yenimahalle"],
+    "İstanbul": ["Fatih","Üsküdar","Pendik"],
+    "İzmir": ["Konak","Karşıyaka","Bornova"],
+    "Bursa": ["Osmangazi","Nilüfer","Yıldırım"]
+};
 
-fetch("https://overpass-api.de/api/interpreter", {
-    method: "POST",
-    body: query
-})
-.then(res => res.json())
-.then(data => {
-    data.elements.forEach(el => {
+document.getElementById("il").addEventListener("change", function(){
+    var il = this.value;
+    var ilceSelect = document.getElementById("ilce");
+    ilceSelect.innerHTML = "<option value=''>İlçe Seçiniz</option>";
 
-        var lat = el.lat || el.center.lat;
-        var lon = el.lon || el.center.lon;
-
-        var osmEdit = `https://www.openstreetmap.org/edit?editor=id#map=19/${lat}/${lon}`;
-        var googleCheck = `https://www.google.com/maps/search/cami/@${lat},${lon},19z`;
-
-        var popup = `
-            <b>❗ İsimsiz Cami</b><br>
-            <small>Tabeladan ismi kontrol edin</small>
-            <a class="btn osm" href="${osmEdit}" target="_blank">✍️ OSM'de İsim Gir</a>
-            <a class="btn google" href="${googleCheck}" target="_blank">🔍 Google’da Kontrol</a>
-        `;
-
-        L.circleMarker([lat, lon], {
-            radius: 6,
-            color: "#1f7a3a",
-            fillColor: "#1f7a3a",
-            fillOpacity: 0.85
-        }).addTo(map).bindPopup(popup);
-    });
+    if(ilceler[il]){
+        ilceler[il].forEach(i=>{
+            ilceSelect.innerHTML += `<option value="${i}">${i}</option>`;
+        });
+    }
+    loadCamiler(il, "");
 });
+
+document.getElementById("ilce").addEventListener("change", function(){
+    loadCamiler(document.getElementById("il").value, this.value);
+});
+
+function clearMarkers(){
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
+}
+
+function loadCamiler(il, ilce){
+    if(!il) return;
+    clearMarkers();
+
+    var areaQuery = `
+    area["name"="${il}"]["admin_level"="4"]->.a;
+    ${ilce ? 'area["name"="'+ilce+'"]["admin_level"="6"]->.b;' : ''}
+    (
+      node(area.${ilce ? 'b' : 'a'})["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."];
+      way(area.${ilce ? 'b' : 'a'})["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."];
+    );
+    out center;
+    `;
+
+    fetch("https://overpass-api.de/api/interpreter", {
+        method: "POST",
+        body: `[out:json][timeout:40];${areaQuery}`
+    })
+    .then(r=>r.json())
+    .then(data=>{
+        if(data.elements.length > 0){
+            map.setView([
+                data.elements[0].lat || data.elements[0].center.lat,
+                data.elements[0].lon || data.elements[0].center.lon
+            ], 11);
+        }
+
+        data.elements.forEach(el=>{
+            var lat = el.lat || el.center.lat;
+            var lon = el.lon || el.center.lon;
+
+            var osm = `https://www.openstreetmap.org/edit?editor=id#map=19/${lat}/${lon}`;
+            var google = `https://www.google.com/maps/search/cami/@${lat},${lon},19z`;
+
+            var marker = L.circleMarker([lat,lon],{
+                radius:6,color:"#1f7a3a",fillOpacity:0.9
+            }).addTo(map)
+            .bindPopup(`
+                <b>❗ İsimsiz Cami</b><br>
+                <a class="btn osm" href="${osm}" target="_blank">OSM'de İsim Gir</a>
+                <a class="btn google" href="${google}" target="_blank">Google'da Kontrol</a>
+            `);
+
+            markers.push(marker);
+        });
+    });
+}
 </script>
 
 </body>
