@@ -3,59 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cami Bulucu Pro</title>
-    
+    <title>Cami Rehberi Kesin Çözüm</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
-        :root { --ana: #e30a17; --altin: #d4af37; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-
-        header { background: var(--ana); color: white; padding: 15px; text-align: center; border-bottom: 3px solid #b10812; }
-        
-        .search-area { background: #fff; padding: 10px; display: flex; gap: 5px; border-bottom: 1px solid #ddd; }
-        .search-area input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; outline: none; }
-        .search-area button { padding: 0 15px; background: var(--ana); color: #fff; border: none; border-radius: 8px; font-weight: bold; }
-
-        #map-container { position: relative; flex: 1; width: 100%; }
-        #map { height: 100%; width: 100%; }
-        
+        body { font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
+        header { background: #e30a17; color: white; padding: 12px; text-align: center; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        #map { flex: 1; width: 100%; background: #f0f0f0; }
         #scan-btn {
-            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-            z-index: 1000; background: var(--ana); color: white; border: 2px solid white;
-            padding: 12px 20px; border-radius: 30px; font-weight: bold;
-            display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; background: #e30a17; color: white; border: 2px solid white;
+            padding: 12px 24px; border-radius: 30px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: none;
         }
-
-        #panel { height: 35vh; overflow-y: auto; background: white; border-top: 4px solid var(--altin); }
-        .info-bar { background: #333; color: white; padding: 8px; font-size: 12px; display: flex; justify-content: space-around; }
-        .card { padding: 15px; border-bottom: 1px solid #eee; }
-        .card b { font-size: 15px; display: block; margin-bottom: 8px; }
+        #panel { height: 35vh; overflow-y: auto; border-top: 4px solid #d4af37; padding: 10px; background: white; }
+        .loading { color: #666; font-style: italic; text-align: center; padding: 20px; }
+        .item { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; flex-direction: column; gap: 8px; }
         .btn-row { display: flex; gap: 8px; }
-        .btn { flex: 1; text-align: center; text-decoration: none; padding: 12px; border-radius: 6px; font-size: 13px; font-weight: bold; color: white; border: none; }
-        
-        .blue { background: #007bff; }
-        .green { background: #28a745; }
-        .red { background: #dc3545; }
+        .btn { flex: 1; text-align: center; text-decoration: none; padding: 10px; border-radius: 5px; font-size: 12px; font-weight: bold; color: white; border: none; }
+        .blue { background: #007bff; } .green { background: #28a745; } .red { background: #dc3545; }
         .dot { background: red; border: 2px solid white; border-radius: 50%; }
     </style>
 </head>
 <body>
 
-<header><h3>TÜRKİYE CAMİ REHBERİ</h3></header>
+<header>TÜRKİYE CAMİ REHBERİ</header>
 
-<div class="search-area">
-    <input type="text" id="cityInp" placeholder="Şehir/İlçe yazın...">
-    <button onclick="citySearch()">ARA</button>
-</div>
-
-<div id="map-container">
-    <button id="scan-btn" onclick="runScan()">BÖLGEYİ TARA</button>
+<div style="position: relative; flex: 1; display: flex; flex-direction: column;">
+    <button id="scan-btn" onclick="startScan()">📍 BU BÖLGEYİ TARA</button>
     <div id="map"></div>
 </div>
 
 <div id="panel">
-    <div id="prayer" class="info-bar">Bekleniyor...</div>
+    <div id="status" style="font-size: 12px; font-weight: bold; color: #e30a17; margin-bottom: 10px;">Lütfen bekleyin, konum alınıyor...</div>
     <div id="results"></div>
 </div>
 
@@ -65,68 +45,69 @@
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     var markers = L.layerGroup().addTo(map);
 
-    function citySearch() {
-        var val = document.getElementById('cityInp').value;
-        if(!val) return;
-        fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(val + " Turkey"))
-        .then(r => r.json()).then(d => {
-            if(d[0]) { map.setView([d[0].lat, d[0].lon], 15); runScan(); }
-        });
-    }
+    // 1. Konum Al ve İlk Aramayı Yap
+    navigator.geolocation.getCurrentPosition(function(p) {
+        var lat = p.coords.latitude, lon = p.coords.longitude;
+        map.setView([lat, lon], 15);
+        fetchData(lat, lon);
+    }, function() {
+        document.getElementById('status').innerText = "Konum alınamadı! Haritayı kaydırıp 'TARA'ya basın.";
+        document.getElementById('scan-btn').style.display = "block";
+    });
 
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(p => {
-            map.setView([p.coords.latitude, p.coords.longitude], 15);
-            runScan();
-        });
-    }
-
-    function runScan() {
+    function startScan() {
         var c = map.getCenter();
         document.getElementById('scan-btn').style.display = "none";
-        getData(c.lat, c.lng);
-        getPrayers(c.lat, c.lng);
+        fetchData(c.lat, c.lng);
     }
 
-    function getPrayers(lat, lon) {
-        fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=13`)
-        .then(r => r.json()).then(d => {
-            var t = d.data.timings;
-            document.getElementById('prayer').innerHTML = `<span>İmsak ${t.Fajr}</span> <span>Öğle ${t.Dhuhr}</span> <span>Akşam ${t.Maghrib}</span>`;
-        });
-    }
+    async function fetchData(lat, lon) {
+        document.getElementById('status').innerText = "🔍 Veri çekiliyor... (Lütfen bekleyin)";
+        document.getElementById('results').innerHTML = '<div class="loading">Sunucu yanıtı bekleniyor...</div>';
+        
+        // Sadece en temel veriyi çeken optimize edilmiş sorgu
+        var query = `[out:json][timeout:15];node["amenity"="place_of_worship"]["religion"="muslim"](around:1500,${lat},${lon});out;`;
+        var url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
 
-    function getData(lat, lon) {
-        document.getElementById('results').innerHTML = "<p style='padding:20px'>Veriler yükleniyor...</p>";
-        
-        // ÖNEMLİ: Sorguyu 1500 metreye düşürdük (Bağlantı hatasını önlemek için daha hızlı yanıt verir)
-        var q = `[out:json][timeout:15];node["amenity"="place_of_worship"]["religion"="muslim"](around:1500,${lat},${lon});out center;`;
-        
-        fetch("https://overpass-api.de/api/interpreter", { method: "POST", body: "data=" + encodeURIComponent(q) })
-        .then(r => { if(!r.ok) throw new Error(); return r.json(); })
-        .then(data => {
+        try {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), 12000); // 12 saniye sonra vazgeç
+
+            const response = await fetch(url, { signal: controller.signal });
+            clearTimeout(id);
+            const data = await response.json();
+
             markers.clearLayers();
             var html = "";
-            data.elements.forEach(el => {
-                var la = el.lat, lo = el.lon, name = el.tags.name || "İsimsiz Cami";
-                var osm = `https://www.openstreetmap.org/edit?node=${el.id}`;
+            if (data.elements.length === 0) {
+                html = "<p class='loading'>Bu yakınlarda cami bulunamadı.</p>";
+            }
 
+            data.elements.forEach(el => {
+                var name = el.tags.name || "İsimsiz Cami / Mescit";
+                var osm = `https://www.openstreetmap.org/edit?node=${el.id}`;
+                
                 if (el.tags.name) {
-                    L.marker([la, lo]).addTo(markers).bindPopup(name);
-                    html += `<div class="card"><b>${name}</b><div class="btn-row"><a href="https://www.google.com/maps/dir/?api=1&destination=${la},${lo}" target="_blank" class="btn blue">GİT</a></div></div>`;
+                    L.marker([el.lat, el.lon]).addTo(markers).bindPopup(name);
+                    html += `<div class="item"><b>${name}</b><div class="btn-row"><a href="https://www.google.com/maps/dir/?api=1&destination=${el.lat},${el.lon}" target="_blank" class="btn blue">YOL TARİFİ</a></div></div>`;
                 } else {
-                    L.marker([la, lo], {icon: L.divIcon({className:'dot', iconSize:[12,12]})}).addTo(markers);
-                    html += `<div class="card" style="background:#fff5f5"><b>İsimsiz Nokta</b><div class="btn-row"><button onclick="map.setView([${la},${lo}], 18)" class="btn red">BUL</button><a href="${osm}" target="_blank" class="btn green">DÜZENLE</a></div></div>`;
+                    L.marker([el.lat, el.lon], {icon: L.divIcon({className:'dot', iconSize:[10,10]})}).addTo(markers);
+                    html += `<div class="item" style="background:#fff5f5"><b>İsimsiz İbadethane</b><div class="btn-row"><button onclick="map.setView([${el.lat},${el.lon}], 18)" class="btn red">BUL</button><a href="${osm}" target="_blank" class="btn green">OSM DÜZENLE</a></div></div>`;
                 }
             });
-            document.getElementById('results').innerHTML = html || "<p style='padding:20px'>Cami bulunamadı.</p>";
-        })
-        .catch(() => {
-            document.getElementById('results').innerHTML = "<p style='padding:20px; color:red'>Bağlantı zayıf. Lütfen tekrar 'TARA' deyin.</p>";
-        });
+
+            document.getElementById('results').innerHTML = html;
+            document.getElementById('status').innerText = "✅ " + data.elements.length + " nokta bulundu.";
+
+        } catch (error) {
+            document.getElementById('status').innerText = "❌ Hata: Sunucu yanıt vermedi.";
+            document.getElementById('results').innerHTML = '<button onclick="startScan()" style="width:100%; padding:15px; background:#e30a17; color:white; border:none; border-radius:5px;">BAĞLANTIYI YENİLE VE TEKRAR DENE</button>';
+        }
     }
 
-    map.on('moveend', () => { document.getElementById('scan-btn').style.display = "block"; });
+    map.on('moveend', function() {
+        document.getElementById('scan-btn').style.display = "block";
+    });
 </script>
 </body>
 </html>
