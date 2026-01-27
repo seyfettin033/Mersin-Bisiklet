@@ -13,47 +13,39 @@ body {
     font-family: system-ui, -apple-system;
     background: #f6f7f8;
 }
-
 header {
     background: #fff;
     padding: 10px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid #ddd;
 }
-
 .title {
     text-align: center;
     font-weight: 600;
     color: #1f7a3a;
     margin-bottom: 8px;
 }
-
 .filters {
     display: flex;
     gap: 8px;
 }
-
 select {
     flex: 1;
     padding: 8px;
     border-radius: 6px;
     border: 1px solid #ccc;
-    background: #fff;
 }
-
 #map {
     height: calc(100vh - 95px);
 }
-
 .btn {
     display: block;
-    padding: 7px;
+    padding: 6px;
     margin-top: 6px;
     text-align: center;
     border-radius: 6px;
     text-decoration: none;
     font-weight: 600;
 }
-
 .osm { background:#2e7d32;color:#fff; }
 .google { background:#fbbc04;color:#000; }
 </style>
@@ -64,18 +56,8 @@ select {
 <header>
     <div class="title">🕌 Türkiye Camii Rehberi</div>
     <div class="filters">
-        <select id="il">
-            <option value="">İl Seçiniz</option>
-            <option value="Konya">Konya</option>
-            <option value="Ankara">Ankara</option>
-            <option value="İstanbul">İstanbul</option>
-            <option value="İzmir">İzmir</option>
-            <option value="Bursa">Bursa</option>
-        </select>
-
-        <select id="ilce">
-            <option value="">İlçe Seçiniz</option>
-        </select>
+        <select id="il"></select>
+        <select id="ilce"></select>
     </div>
 </header>
 
@@ -84,6 +66,7 @@ select {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
+// === HARİTA ===
 var map = L.map('map').setView([39,35], 6);
 var markers = [];
 
@@ -91,81 +74,96 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19
 }).addTo(map);
 
-// İl - İlçe verisi (örnek – genişletilebilir)
-var ilceler = {
-    "Konya": ["Selçuklu","Meram","Karatay"],
-    "Ankara": ["Çankaya","Keçiören","Yenimahalle"],
-    "İstanbul": ["Fatih","Üsküdar","Pendik"],
-    "İzmir": ["Konak","Karşıyaka","Bornova"],
-    "Bursa": ["Osmangazi","Nilüfer","Yıldırım"]
+// === İL / İLÇE + BBOX ===
+const data = {
+    "Konya": {
+        bbox:[37.2,31.1,38.3,33.5],
+        ilceler:{
+            "Selçuklu":[37.83,32.44,37.93,32.60],
+            "Meram":[37.70,32.35,37.85,32.55],
+            "Karatay":[37.75,32.55,37.90,32.75]
+        }
+    },
+    "Ankara":{
+        bbox:[39.5,32.4,40.2,33.1],
+        ilceler:{
+            "Çankaya":[39.85,32.75,39.95,32.95],
+            "Keçiören":[39.95,32.80,40.05,32.95]
+        }
+    }
 };
 
-document.getElementById("il").addEventListener("change", function(){
-    var il = this.value;
-    var ilceSelect = document.getElementById("ilce");
-    ilceSelect.innerHTML = "<option value=''>İlçe Seçiniz</option>";
+// === DROPDOWN DOLDUR ===
+const ilSelect = document.getElementById("il");
+const ilceSelect = document.getElementById("ilce");
 
-    if(ilceler[il]){
-        ilceler[il].forEach(i=>{
-            ilceSelect.innerHTML += `<option value="${i}">${i}</option>`;
-        });
-    }
-    loadCamiler(il, "");
-});
-
-document.getElementById("ilce").addEventListener("change", function(){
-    loadCamiler(document.getElementById("il").value, this.value);
-});
-
-function clearMarkers(){
-    markers.forEach(m => map.removeLayer(m));
-    markers = [];
+ilSelect.innerHTML = `<option value="">İl Seçiniz</option>`;
+for(let il in data){
+    ilSelect.innerHTML += `<option value="${il}">${il}</option>`;
 }
 
-function loadCamiler(il, ilce){
+ilSelect.onchange = ()=>{
+    ilceSelect.innerHTML = `<option value="">İlçe Seçiniz</option>`;
+    let il = ilSelect.value;
     if(!il) return;
-    clearMarkers();
 
-    var areaQuery = `
-    area["name"="${il}"]["admin_level"="4"]->.a;
-    ${ilce ? 'area["name"="'+ilce+'"]["admin_level"="6"]->.b;' : ''}
+    for(let ilce in data[il].ilceler){
+        ilceSelect.innerHTML += `<option value="${ilce}">${ilce}</option>`;
+    }
+    loadCamiler(data[il].bbox);
+};
+
+ilceSelect.onchange = ()=>{
+    let il = ilSelect.value;
+    let ilce = ilceSelect.value;
+    if(il && ilce){
+        loadCamiler(data[il].ilceler[ilce]);
+    }
+};
+
+// === CAMİLERİ YÜKLE ===
+function loadCamiler(bbox){
+    markers.forEach(m=>map.removeLayer(m));
+    markers = [];
+
+    let query = `
+    [out:json][timeout:40];
     (
-      node(area.${ilce ? 'b' : 'a'})["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."];
-      way(area.${ilce ? 'b' : 'a'})["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."];
+      node["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](${bbox.join(",")});
+      way["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](${bbox.join(",")});
     );
     out center;
     `;
 
-    fetch("https://overpass-api.de/api/interpreter", {
-        method: "POST",
-        body: `[out:json][timeout:40];${areaQuery}`
+    fetch("https://overpass-api.de/api/interpreter",{
+        method:"POST",
+        body:query
     })
     .then(r=>r.json())
-    .then(data=>{
-        if(data.elements.length > 0){
+    .then(d=>{
+        if(d.elements.length){
             map.setView([
-                data.elements[0].lat || data.elements[0].center.lat,
-                data.elements[0].lon || data.elements[0].center.lon
-            ], 11);
+                d.elements[0].lat || d.elements[0].center.lat,
+                d.elements[0].lon || d.elements[0].center.lon
+            ],12);
         }
 
-        data.elements.forEach(el=>{
-            var lat = el.lat || el.center.lat;
-            var lon = el.lon || el.center.lon;
+        d.elements.forEach(el=>{
+            let lat = el.lat || el.center.lat;
+            let lon = el.lon || el.center.lon;
 
-            var osm = `https://www.openstreetmap.org/edit?editor=id#map=19/${lat}/${lon}`;
-            var google = `https://www.google.com/maps/search/cami/@${lat},${lon},19z`;
+            let osm = `https://www.openstreetmap.org/edit?editor=id#map=19/${lat}/${lon}`;
+            let google = `https://www.google.com/maps/search/cami/@${lat},${lon},19z`;
 
-            var marker = L.circleMarker([lat,lon],{
+            let m = L.circleMarker([lat,lon],{
                 radius:6,color:"#1f7a3a",fillOpacity:0.9
             }).addTo(map)
             .bindPopup(`
-                <b>❗ İsimsiz Cami</b><br>
-                <a class="btn osm" href="${osm}" target="_blank">OSM'de İsim Gir</a>
-                <a class="btn google" href="${google}" target="_blank">Google'da Kontrol</a>
+                <b>❗ İsimsiz Cami</b>
+                <a class="btn osm" href="${osm}" target="_blank">OSM’de Düzenle</a>
+                <a class="btn google" href="${google}" target="_blank">Google Kontrol</a>
             `);
-
-            markers.push(marker);
+            markers.push(m);
         });
     });
 }
