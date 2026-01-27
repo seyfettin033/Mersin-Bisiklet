@@ -3,35 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cami Rehberi Pro</title>
-    
+    <title>Cami Rehberi - Kesin Çözüm</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: sans-serif; }
-        #map { position: absolute; top: 0; bottom: 45%; left: 0; right: 0; z-index: 1; background: #f0f0f0; }
-        #panel { position: absolute; bottom: 0; left: 0; right: 0; height: 45%; background: white; z-index: 10; border-top: 5px solid #d4af37; overflow-y: auto; padding: 10px; }
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: sans-serif; }
+        #map { position: absolute; top: 0; bottom: 40%; left: 0; right: 0; background: #eee; }
+        #panel { position: absolute; bottom: 0; left: 0; right: 0; height: 40%; background: white; border-top: 5px solid #d4af37; overflow-y: auto; padding: 10px; z-index: 100; }
         #scan-btn { 
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%); 
             z-index: 1000; background: #e30a17; color: white; border: 2px solid white; 
             padding: 12px 25px; border-radius: 30px; font-weight: bold; cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
         }
-        .status { color: #e30a17; font-weight: bold; text-align: center; margin-bottom: 10px; font-size: 13px; }
-        .card { border: 1px solid #eee; padding: 12px; margin-bottom: 8px; border-radius: 8px; background: #f9f9f9; }
-        .btn-group { display: flex; gap: 5px; margin-top: 10px; }
-        .btn { flex: 1; text-align: center; text-decoration: none; padding: 12px; border-radius: 5px; font-size: 12px; font-weight: bold; color: white; }
+        .status { color: #e30a17; font-weight: bold; text-align: center; margin-bottom: 10px; }
+        .card { border: 1px solid #eee; padding: 10px; margin-bottom: 8px; border-radius: 8px; background: #f9f9f9; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .btn-group { display: flex; gap: 5px; margin-top: 8px; }
+        .btn { flex: 1; text-align: center; text-decoration: none; padding: 10px; border-radius: 5px; font-size: 11px; font-weight: bold; color: white; }
         .blue { background: #007bff; } .green { background: #28a745; }
     </style>
 </head>
 <body>
 
-<button id="scan-btn" onclick="zorlaTara()">🚀 VERİYİ ZORLA ÇEK</button>
+<button id="scan-btn" onclick="tara()">🔍 HARİTAYI TARA</button>
 <div id="map"></div>
 
 <div id="panel">
-    <div id="status" class="status">Başlatmak için butona basın.</div>
+    <div id="status" class="status">Cihaz konumu bekleniyor...</div>
     <div id="liste"></div>
 </div>
 
@@ -40,58 +37,65 @@
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     var markerLayer = L.featureGroup().addTo(map);
 
-    async function zorlaTara() {
+    async function tara() {
         const b = map.getBounds();
         const bbox = `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
         const query = `[out:json][timeout:30];(node["amenity"="place_of_worship"]["religion"="muslim"](${bbox});way["amenity"="place_of_worship"]["religion"="muslim"](${bbox}););out center;`;
         
-        document.getElementById('status').innerText = "📡 Sunucuya bağlanılıyor...";
-        document.getElementById('liste').innerHTML = "";
+        const status = document.getElementById('status');
+        const liste = document.getElementById('liste');
+        
+        status.innerText = "📡 Köprü üzerinden bağlanılıyor...";
+        liste.innerHTML = "";
         markerLayer.clearLayers();
 
-        // Sunucu adresi - Alternatifli
-        const url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
+        // CORS Proxy Köprüsü (İsteği tarayıcı yerine bir sunucu yapar)
+        const proxyUrl = "https://api.allorigins.win/get?url=";
+        const targetUrl = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
 
         try {
-            // GET metodu daha "tarayıcı dostudur"
-            const response = await fetch(url);
-            if (!response.ok) throw new Error("Sunucu reddetti");
-
-            const data = await response.json();
+            const response = await fetch(proxyUrl + encodeURIComponent(targetUrl));
+            if (!response.ok) throw new Error("Köprü yanıt vermedi");
             
+            const rawData = await response.json();
+            const data = JSON.parse(rawData.contents); // AllOrigins veriyi 'contents' içinde string olarak gönderir
+
             if (!data.elements || data.elements.length === 0) {
-                document.getElementById('status').innerText = "❌ Bu alanda cami bulunamadı.";
+                status.innerText = "❌ Bu bölgede sonuç bulunamadı.";
                 return;
             }
 
             data.elements.forEach(el => {
-                const lat = el.lat || (el.center ? el.center.lat : null);
-                const lon = el.lon || (el.center ? el.center.lng : null);
+                const lat = el.lat || el.center.lat;
+                const lon = el.lon || el.center.lng;
+                const ad = el.tags.name || "İsimsiz Cami/Mescit";
+                const osm = `https://www.openstreetmap.org/edit?${el.type}=${el.id}`;
                 
-                if (lat && lon) {
-                    const ad = el.tags.name || "İsimsiz Cami/Mescit";
-                    const osm = `https://www.openstreetmap.org/edit?${el.type}=${el.id}`;
-                    
-                    L.marker([lat, lon]).addTo(markerLayer).bindPopup(ad);
-                    
-                    const card = `<div class="card">
+                L.marker([lat, lon]).addTo(markerLayer).bindPopup(ad);
+                
+                liste.insertAdjacentHTML('beforeend', `
+                    <div class="card">
                         <b>${ad}</b>
                         <div class="btn-group">
-                            <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}" target="_blank" class="btn blue">NAVİGASYON</a>
+                            <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}" target="_blank" class="btn blue">YOL TARİFİ</a>
                             <a href="${osm}" target="_blank" class="btn green">DÜZENLE</a>
                         </div>
-                    </div>`;
-                    document.getElementById('liste').insertAdjacentHTML('beforeend', card);
-                }
+                    </div>`);
             });
 
-            document.getElementById('status').innerText = `✅ ${data.elements.length} ibadethane yüklendi.`;
+            status.innerText = `✅ ${data.elements.length} ibadethane yüklendi.`;
+            map.fitBounds(markerLayer.getBounds(), {padding: [20, 20]});
 
         } catch (err) {
-            document.getElementById('status').innerText = "⚠️ Bağlantı hatası! Lütfen internetinizi kontrol edin.";
+            status.innerText = "⚠️ Köprü hatası! Lütfen 5 saniye sonra tekrar basın.";
             console.error(err);
         }
     }
+
+    navigator.geolocation.getCurrentPosition(p => {
+        map.setView([p.coords.latitude, p.coords.longitude], 15);
+        tara();
+    }, () => { status.innerText = "📍 Konum kapalı. Haritayı kaydırın."; });
 </script>
 </body>
 </html>
