@@ -10,46 +10,57 @@
     
     <style>
         :root { --ana: #e30a17; --altin: #d4af37; --krem: #f4f4f4; }
-        body { margin:0; font-family: 'Segoe UI', sans-serif; background: var(--krem); display: flex; flex-direction: column; height: 100vh; }
+        body { margin:0; font-family: 'Segoe UI', sans-serif; background: var(--krem); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        /* Header & Bayrak */
-        header { background: var(--ana); color: white; padding: 15px; display: flex; align-items: center; gap: 15px; border-bottom: 4px solid #c10914; }
+        header { background: var(--ana); color: white; padding: 15px; display: flex; align-items: center; gap: 15px; border-bottom: 4px solid #c10914; z-index: 1001; }
         .flag { width: 45px; height: 30px; background: url('https://flagcdn.com/tr.svg') no-repeat center; background-size: contain; }
         
-        /* Bilgi Alanları */
-        #ust-bilgi { background: white; border-bottom: 1px solid #ddd; }
-        #namaz { display: flex; justify-content: center; gap: 10px; padding: 10px; font-size: 12px; flex-wrap: wrap; font-weight: bold; }
-        #namaz span { background: #eee; padding: 4px 8px; border-radius: 4px; }
-        #ayet { padding: 10px; text-align: center; font-style: italic; font-size: 13px; color: #856404; background: #fff3cd; }
+        #namaz { display: flex; justify-content: center; gap: 8px; padding: 8px; font-size: 11px; background: white; border-bottom: 1px solid #ddd; flex-wrap: wrap; }
+        #namaz span { background: #f8f8f8; padding: 3px 6px; border-radius: 4px; border: 1px solid #eee; }
 
-        /* Harita */
-        #map { flex: 1; min-height: 40vh; width: 100%; }
-
-        /* Alt Panel */
-        #panel { background: white; padding: 15px; border-top: 2px solid var(--altin); overflow-y: auto; max-height: 35vh; }
-        .istatistik { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; font-weight: bold; }
+        /* Harita ve Buton Konumlandırma */
+        #harita-alani { position: relative; flex: 1; min-height: 40vh; }
+        #map { height: 100%; width: 100%; }
         
-        /* Cami Listesi */
+        /* BU BÖLGEDE ARA BUTONU */
+        #ara-katman {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: none; /* Sadece harita hareket edince görünecek */
+        }
+        .btn-yuzen {
+            background: white;
+            color: var(--ana);
+            border: 2px solid var(--ana);
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        .btn-yuzen:hover { background: var(--ana); color: white; }
+
+        #panel { background: white; padding: 15px; border-top: 2px solid var(--altin); overflow-y: auto; height: 35vh; }
+        .istatistik { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; font-weight: bold; position: sticky; top: 0; background: white; padding-bottom: 5px; }
+        
         #sonuclar { list-style: none; padding: 0; margin: 0; }
         #sonuclar li { padding: 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-        .yol-btn { background: #007bff; color: white; text-decoration: none; padding: 6px 12px; border-radius: 5px; font-size: 12px; font-weight: bold; border: none; cursor: pointer; }
+        .yol-btn { background: #007bff; color: white; text-decoration: none; padding: 6px 12px; border-radius: 5px; font-size: 12px; font-weight: bold; border: none; }
         .gorev-btn { background: #dc3545; }
 
-        /* Kırmızı Yanıp Sönen Marker CSS */
-        .gorev-marker-css {
-            background: red;
-            border: 2px solid white;
-            border-radius: 50%;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
-            animation: pulse 1.5s infinite;
-        }
+        .gorev-marker-css { background: red; border: 2px solid white; border-radius: 50%; animation: pulse 1.5s infinite; }
         @keyframes pulse {
             0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
             70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
             100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
         }
-
-        footer { text-align: center; padding: 10px; font-size: 11px; background: #eee; color: #666; }
     </style>
 </head>
 <body>
@@ -58,16 +69,20 @@
     <div class="flag"></div>
     <div style="flex:1">
         <h1 style="margin:0; font-size:18px;">TÜRKİYE CAMİLERİ</h1>
-        <small>Gönüllü Veri Toplama Portalı</small>
+        <small>Görev Modu Aktif</small>
     </div>
 </header>
 
-<div id="ust-bilgi">
-    <div id="namaz">Vakitler yükleniyor...</div>
-    <div id="ayet">Ayet-i Kerime yükleniyor...</div>
-</div>
+<div id="namaz">Vakitler yükleniyor...</div>
 
-<div id="map"></div>
+<div id="harita-alani">
+    <div id="ara-katman">
+        <button class="btn-yuzen" onclick="bolgedeAra()">
+            <i class="fa-solid fa-arrows-rotate"></i> Bu Bölgede Ara
+        </button>
+    </div>
+    <div id="map"></div>
+</div>
 
 <div id="panel">
     <div class="istatistik">
@@ -77,28 +92,23 @@
     <ul id="sonuclar"></ul>
 </div>
 
-<footer>
-    <b>Seyfettin Gündoğdu</b> tarafından oyunlaştırma mantığıyla hazırlanmıştır.
-</footer>
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    const map = L.map('map').setView([39, 35], 6);
+    const map = L.map('map', { zoomControl: false }).setView([39, 35], 6);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     const markerGrubu = L.layerGroup().addTo(map);
 
-    // 1. MEVCUT KONUMU AL
+    // Konum ve Başlangıç
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(pos => {
             const {latitude: lat, longitude: lon} = pos.coords;
             map.setView([lat, lon], 15);
-            L.circle([lat, lon], {radius: 100, color: 'blue', fillOpacity: 0.2}).addTo(map).bindPopup("Buradasınız");
             verileriCek(lat, lon);
             namazGetir(lat, lon);
         });
     }
 
-    // 2. NAMAZ VAKİTLERİ (Aladhan API)
     function namazGetir(lat, lon) {
         fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=13`)
         .then(r => r.json()).then(d => {
@@ -110,15 +120,13 @@
         });
     }
 
-    // 3. AYET-İ KERİME
-    fetch("https://api.alquran.cloud/v1/ayah/262/tr.diyanet")
-    .then(r => r.json()).then(d => {
-        document.getElementById("ayet").innerHTML = `"${d.data.text}"`;
-    });
+    function bolgedeAra() {
+        const c = map.getCenter();
+        document.getElementById("ara-katman").style.display = "none";
+        verileriCek(c.lat, c.lng);
+    }
 
-    // 4. CAMİLERİ VE GÖREVLERİ YÜKLE
     function verileriCek(lat, lon) {
-        // Hem ismi olanları hem olmayanları çeken hibrit sorgu
         const q = `[out:json][timeout:25];
         (
           node["amenity"="place_of_worship"]["religion"="muslim"](around:2500,${lat},${lon});
@@ -133,9 +141,7 @@
         .then(r => r.json())
         .then(data => {
             markerGrubu.clearLayers();
-            let camiSay = 0;
-            let gorevSay = 0;
-            let listHtml = "";
+            let cSay = 0, gSay = 0, html = "";
 
             data.elements.forEach(el => {
                 const la = el.lat || el.center.lat;
@@ -143,38 +149,25 @@
                 const isim = el.tags.name;
                 
                 if (isim) {
-                    // Normal Cami (Mavi Marker)
-                    camiSay++;
-                    L.marker([la, lo]).addTo(markerGrubu)
-                        .bindPopup(`<b>${isim}</b><br><a href="https://www.google.com/maps?q=${la},${lo}" target="_blank">Yol Tarifi</a>`);
-                    listHtml += `<li><span>${isim}</span> <a href="https://www.google.com/maps?q=${la},${lo}" target="_blank" class="yol-btn">GİT</a></li>`;
+                    cSay++;
+                    L.marker([la, lo]).addTo(markerGrubu).bindPopup(`<b>${isim}</b>`);
+                    html += `<li><span>${isim}</span> <a href="https://www.google.com/maps/dir/?api=1&destination=${la},${lo}" target="_blank" class="yol-btn">GİT</a></li>`;
                 } else {
-                    // İsimsiz Cami (Kırmızı Yanıp Sönen Görev)
-                    gorevSay++;
+                    gSay++;
                     const gorevIcon = L.divIcon({ className: 'gorev-marker-css', iconSize: [12, 12] });
-                    
-                    L.marker([la, lo], {icon: gorevIcon}).addTo(markerGrubu)
-                        .bindPopup(`
-                            <div style="text-align:center">
-                                <b style="color:red">İSİMSİZ CAMİ!</b><br>
-                                <small>Burayı biliyorsan ismini ekle!</small><br>
-                                <button onclick="window.open('https://www.openstreetmap.org/edit?node=${el.id}')" class="yol-btn gorev-btn" style="margin-top:5px">İSİM ÖNER</button>
-                            </div>
-                        `);
-                    listHtml += `<li style="background:#fff0f0"><span><b>Eksik Veri:</b> İsimsiz Cami</span> <button onclick="map.setView([${la},${lo}], 18)" class="yol-btn gorev-btn">BUL</button></li>`;
+                    L.marker([la, lo], {icon: gorevIcon}).addTo(markerGrubu).bindPopup(`<b style="color:red">İsimsiz Cami</b><br><button class="yol-btn gorev-btn" onclick="window.open('https://www.openstreetmap.org/edit?node=${el.id}')">İSİM EKLE</button>`);
+                    html += `<li style="background:#fff0f0"><span>İsimsiz Cami</span> <button onclick="map.setView([${la},${lo}], 18)" class="yol-btn gorev-btn">BUL</button></li>`;
                 }
             });
-
-            document.getElementById("sonuclar").innerHTML = listHtml;
-            document.getElementById("sayac").innerText = camiSay;
-            document.getElementById("gorev-sayac").innerText = gorevSay;
+            document.getElementById("sonuclar").innerHTML = html || "<li>Bu bölgede sonuç bulunamadı.</li>";
+            document.getElementById("sayac").innerText = cSay;
+            document.getElementById("gorev-sayac").innerText = gSay;
         });
     }
 
-    // Harita hareket ettikçe güncelle
-    map.on('moveend', () => {
-        const c = map.getCenter();
-        verileriCek(c.lat, c.lng);
+    // Harita her hareket ettiğinde "Bu Bölgede Ara" butonunu göster
+    map.on('movestart', () => {
+        document.getElementById("ara-katman").style.display = "block";
     });
 </script>
 
