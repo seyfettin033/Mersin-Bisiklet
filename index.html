@@ -2,162 +2,180 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cami Rehberi Mobil</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Türkiye Camileri | Görev Modu</title>
     
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
-
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    
     <style>
-        :root { --ana: #c0392b; --arka: #f8f9fa; }
-        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        :root { --ana: #e30a17; --altin: #d4af37; --krem: #f4f4f4; }
+        body { margin:0; font-family: 'Segoe UI', sans-serif; background: var(--krem); display: flex; flex-direction: column; height: 100vh; }
         
-        #map { flex: 1; width: 100%; z-index: 1; }
-
-        /* Mobil Alt Panel (Bottom Sheet) */
-        #bottom-sheet {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            background: white; border-top-left-radius: 20px; border-top-right-radius: 20px;
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.15); z-index: 1000;
-            max-height: 85vh; min-height: 120px; display: flex; flex-direction: column;
-            transition: transform 0.3s ease;
-        }
-
-        .handle { width: 40px; height: 5px; background: #ccc; border-radius: 10px; margin: 10px auto; cursor: pointer; }
-
-        .sheet-header { padding: 0 20px 10px; text-align: center; }
-        .sheet-header h2 { margin: 0; font-size: 18px; color: var(--ana); }
-
-        .btn-loc { 
-            background: var(--ana); color: white; border: none; padding: 12px; 
-            border-radius: 10px; font-weight: bold; width: 90%; margin: 5px auto 15px; 
-            display: block; font-size: 14px;
-        }
-
-        #list-container { flex: 1; overflow-y: auto; padding: 0 15px 20px; }
-
-        .cami-card { 
-            background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 12px;
-            margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
-        }
-        .cami-info h4 { margin: 0; font-size: 15px; color: #333; }
-        .cami-info span { font-size: 13px; color: var(--ana); font-weight: bold; }
+        /* Header & Bayrak */
+        header { background: var(--ana); color: white; padding: 15px; display: flex; align-items: center; gap: 15px; border-bottom: 4px solid #c10914; }
+        .flag { width: 45px; height: 30px; background: url('https://flagcdn.com/tr.svg') no-repeat center; background-size: contain; }
         
-        .nav-icon { background: #eee; padding: 10px; border-radius: 50%; text-decoration: none; font-size: 18px; }
+        /* Bilgi Alanları */
+        #ust-bilgi { background: white; border-bottom: 1px solid #ddd; }
+        #namaz { display: flex; justify-content: center; gap: 10px; padding: 10px; font-size: 12px; flex-wrap: wrap; font-weight: bold; }
+        #namaz span { background: #eee; padding: 4px 8px; border-radius: 4px; }
+        #ayet { padding: 10px; text-align: center; font-style: italic; font-size: 13px; color: #856404; background: #fff3cd; }
 
-        /* Yükleme Ekranı */
-        #loader { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2000; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 10px; border: 1px solid #ddd; }
+        /* Harita */
+        #map { flex: 1; min-height: 40vh; width: 100%; }
+
+        /* Alt Panel */
+        #panel { background: white; padding: 15px; border-top: 2px solid var(--altin); overflow-y: auto; max-height: 35vh; }
+        .istatistik { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; font-weight: bold; }
+        
+        /* Cami Listesi */
+        #sonuclar { list-style: none; padding: 0; margin: 0; }
+        #sonuclar li { padding: 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .yol-btn { background: #007bff; color: white; text-decoration: none; padding: 6px 12px; border-radius: 5px; font-size: 12px; font-weight: bold; border: none; cursor: pointer; }
+        .gorev-btn { background: #dc3545; }
+
+        /* Kırmızı Yanıp Sönen Marker CSS */
+        .gorev-marker-css {
+            background: red;
+            border: 2px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
+            100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+        }
+
+        footer { text-align: center; padding: 10px; font-size: 11px; background: #eee; color: #666; }
     </style>
 </head>
 <body>
 
-<div id="loader">🔄 Camiler Aranıyor...</div>
-<div id="map"></div>
-
-<div id="bottom-sheet">
-    <div class="handle" onclick="toggleSheet()"></div>
-    <div class="sheet-header">
-        <h2>🕌 Yakındaki Camiler</h2>
+<header>
+    <div class="flag"></div>
+    <div style="flex:1">
+        <h1 style="margin:0; font-size:18px;">TÜRKİYE CAMİLERİ</h1>
+        <small>Gönüllü Veri Toplama Portalı</small>
     </div>
-    
-    <button class="btn-loc" onclick="startLocation()">📍 En Yakınları Listele</button>
+</header>
 
-    <div id="list-container">
-        <p style="text-align:center; color:#999; font-size:14px;">Konum butonuna basarak size en yakın camileri görebilirsiniz.</p>
-    </div>
+<div id="ust-bilgi">
+    <div id="namaz">Vakitler yükleniyor...</div>
+    <div id="ayet">Ayet-i Kerime yükleniyor...</div>
 </div>
 
+<div id="map"></div>
+
+<div id="panel">
+    <div class="istatistik">
+        <span><i class="fa-solid fa-mosque"></i> <span id="sayac">0</span> Cami</span>
+        <span style="color:red"><i class="fa-solid fa-circle-exclamation"></i> <span id="gorev-sayac">0</span> Görev</span>
+    </div>
+    <ul id="sonuclar"></ul>
+</div>
+
+<footer>
+    <b>Seyfettin Gündoğdu</b> tarafından oyunlaştırma mantığıyla hazırlanmıştır.
+</footer>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-
 <script>
-    var map = L.map('map', { zoomControl: false }).setView([39.0, 35.0], 6);
+    const map = L.map('map').setView([39, 35], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    var markers = L.markerClusterGroup();
-    map.addLayer(markers);
+    const markerGrubu = L.layerGroup().addTo(map);
 
-    var userCoords = null;
-    var sheetExpanded = false;
-
-    function toggleSheet() {
-        const sheet = document.getElementById('bottom-sheet');
-        sheetExpanded = !sheetExpanded;
-        sheet.style.transform = sheetExpanded ? 'translateY(0)' : 'translateY(calc(85vh - 120px))';
-    }
-
-    function startLocation() {
-        if (navigator.geolocation) {
-            document.getElementById('loader').style.display = 'block';
-            navigator.geolocation.getCurrentPosition(pos => {
-                userCoords = [pos.coords.latitude, pos.coords.longitude];
-                map.setView(userCoords, 15);
-                L.circleMarker(userCoords, {radius: 6, color: '#2ecc71', fillOpacity: 1}).addTo(map);
-                loadData();
-            }, () => {
-                alert("Lütfen konum izni verin.");
-                document.getElementById('loader').style.display = 'none';
-            });
-        }
-    }
-
-    async function loadData() {
-        const b = map.getBounds();
-        const query = `[out:json][timeout:25];(node["amenity"="place_of_worship"]["religion"="muslim"](${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()});way["amenity"="place_of_worship"]["religion"="muslim"](${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}););out center;`;
-
-        try {
-            const res = await fetch('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query));
-            const data = await res.json();
-            
-            let camiler = data.elements.map(el => {
-                const lat = el.lat || el.center.lat;
-                const lon = el.lon || el.center.lon;
-                return {
-                    name: el.tags.name || "İsimsiz Cami",
-                    lat: lat, lng: lon,
-                    dist: getDistance(userCoords[0], userCoords[1], lat, lon)
-                };
-            }).sort((a, b) => a.dist - b.dist);
-
-            render(camiler);
-        } catch (e) {
-            alert("Veri çekilemedi.");
-        } finally {
-            document.getElementById('loader').style.display = 'none';
-        }
-    }
-
-    function render(list) {
-        const container = document.getElementById('list-container');
-        container.innerHTML = '';
-        markers.clearLayers();
-
-        list.forEach(c => {
-            const m = L.marker([c.lat, c.lng]);
-            m.bindPopup(`<b>${c.name}</b><br><a href="https://www.google.com/maps?q=${c.lat},${c.lng}" target="_blank">Yol Tarifi</a>`);
-            markers.addLayer(m);
-
-            const card = document.createElement('div');
-            card.className = 'cami-card';
-            card.innerHTML = `
-                <div class="cami-info">
-                    <h4>${c.name}</h4>
-                    <span>${c.dist.toFixed(2)} km</span>
-                </div>
-                <a href="https://www.google.com/maps?q=${c.lat},${c.lng}" class="nav-icon" target="_blank">🚗</a>
-            `;
-            card.onclick = () => { map.flyTo([c.lat, c.lng], 17); toggleSheet(); };
-            container.appendChild(card);
+    // 1. MEVCUT KONUMU AL
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+            const {latitude: lat, longitude: lon} = pos.coords;
+            map.setView([lat, lon], 15);
+            L.circle([lat, lon], {radius: 100, color: 'blue', fillOpacity: 0.2}).addTo(map).bindPopup("Buradasınız");
+            verileriCek(lat, lon);
+            namazGetir(lat, lon);
         });
     }
 
-    function getDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371;
-        const dLat = (lat2-lat1) * Math.PI/180;
-        const dLon = (lon2-lon1) * Math.PI/180;
-        const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    // 2. NAMAZ VAKİTLERİ (Aladhan API)
+    function namazGetir(lat, lon) {
+        fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=13`)
+        .then(r => r.json()).then(d => {
+            const t = d.data.timings;
+            document.getElementById("namaz").innerHTML = `
+                <span>İmsak ${t.Fajr}</span> <span>Öğle ${t.Dhuhr}</span>
+                <span>İkindi ${t.Asr}</span> <span>Akşam ${t.Maghrib}</span> <span>Yatsı ${t.Isha}</span>
+            `;
+        });
     }
+
+    // 3. AYET-İ KERİME
+    fetch("https://api.alquran.cloud/v1/ayah/262/tr.diyanet")
+    .then(r => r.json()).then(d => {
+        document.getElementById("ayet").innerHTML = `"${d.data.text}"`;
+    });
+
+    // 4. CAMİLERİ VE GÖREVLERİ YÜKLE
+    function verileriCek(lat, lon) {
+        // Hem ismi olanları hem olmayanları çeken hibrit sorgu
+        const q = `[out:json][timeout:25];
+        (
+          node["amenity"="place_of_worship"]["religion"="muslim"](around:2500,${lat},${lon});
+          way["amenity"="place_of_worship"]["religion"="muslim"](around:2500,${lat},${lon});
+        );
+        out center;`;
+
+        fetch("https://overpass-api.de/api/interpreter", {
+            method: "POST",
+            body: "data=" + encodeURIComponent(q)
+        })
+        .then(r => r.json())
+        .then(data => {
+            markerGrubu.clearLayers();
+            let camiSay = 0;
+            let gorevSay = 0;
+            let listHtml = "";
+
+            data.elements.forEach(el => {
+                const la = el.lat || el.center.lat;
+                const lo = el.lon || el.center.lng;
+                const isim = el.tags.name;
+                
+                if (isim) {
+                    // Normal Cami (Mavi Marker)
+                    camiSay++;
+                    L.marker([la, lo]).addTo(markerGrubu)
+                        .bindPopup(`<b>${isim}</b><br><a href="https://www.google.com/maps?q=${la},${lo}" target="_blank">Yol Tarifi</a>`);
+                    listHtml += `<li><span>${isim}</span> <a href="https://www.google.com/maps?q=${la},${lo}" target="_blank" class="yol-btn">GİT</a></li>`;
+                } else {
+                    // İsimsiz Cami (Kırmızı Yanıp Sönen Görev)
+                    gorevSay++;
+                    const gorevIcon = L.divIcon({ className: 'gorev-marker-css', iconSize: [12, 12] });
+                    
+                    L.marker([la, lo], {icon: gorevIcon}).addTo(markerGrubu)
+                        .bindPopup(`
+                            <div style="text-align:center">
+                                <b style="color:red">İSİMSİZ CAMİ!</b><br>
+                                <small>Burayı biliyorsan ismini ekle!</small><br>
+                                <button onclick="window.open('https://www.openstreetmap.org/edit?node=${el.id}')" class="yol-btn gorev-btn" style="margin-top:5px">İSİM ÖNER</button>
+                            </div>
+                        `);
+                    listHtml += `<li style="background:#fff0f0"><span><b>Eksik Veri:</b> İsimsiz Cami</span> <button onclick="map.setView([${la},${lo}], 18)" class="yol-btn gorev-btn">BUL</button></li>`;
+                }
+            });
+
+            document.getElementById("sonuclar").innerHTML = listHtml;
+            document.getElementById("sayac").innerText = camiSay;
+            document.getElementById("gorev-sayac").innerText = gorevSay;
+        });
+    }
+
+    // Harita hareket ettikçe güncelle
+    map.on('moveend', () => {
+        const c = map.getCenter();
+        verileriCek(c.lat, c.lng);
+    });
 </script>
 
 </body>
