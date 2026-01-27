@@ -2,17 +2,43 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cami Rehberi - Kesin Çözüm</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cami Rehberi - Sabit Veri</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; background: #fff; }
-        #map { height: 45vh; width: 100%; z-index: 1; }
-        #panel { height: 55vh; overflow-y: auto; padding: 15px; background: #f4f4f4; border-top: 3px solid #d4af37; }
-        .card { background: white; border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .btn { display: inline-block; background: #007bff; color: white; padding: 10px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 5px; width: 100%; text-align: center; }
-        h3 { margin: 0 0 10px 0; color: #333; font-size: 16px; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; background: #eee; }
+        
+        /* Harita Ekranın Yarısı */
+        #map { height: 45vh; width: 100%; z-index: 1; border-bottom: 3px solid #d4af37; }
+        
+        /* Liste Ekranın Diğer Yarısı */
+        #panel { height: 55vh; overflow-y: auto; background: white; padding: 10px; box-sizing: border-box; }
+        
+        .card { 
+            border: 2px solid #d4af37; 
+            padding: 15px; 
+            margin-bottom: 12px; 
+            border-radius: 10px; 
+            background: #fff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .cami-adi { font-weight: bold; font-size: 16px; color: #333; margin-bottom: 8px; display: block; }
+        
+        .git-btn { 
+            display: block; 
+            background: #007bff; 
+            color: white; 
+            text-align: center; 
+            padding: 12px; 
+            text-decoration: none; 
+            border-radius: 6px; 
+            font-weight: bold;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -23,34 +49,34 @@
 </div>
 
 <script>
-    // 1. ÖRNEK VERİ SETİ (Sahibata/Konya Bölgesi)
-    // Eğer bu yöntem çalışırsa, senin 42 verini buraya toplu olarak gömeceğiz.
-    var camiler = [
+    // 1. VERİLERİ KODUN İÇİNE GÖMDÜK (Dışarıdan çekme yok)
+    var camiVerileri = [
         {ad: "Sahibata Camii", lat: 37.8695, lon: 32.4925},
         {ad: "Kamberler Camii", lat: 37.8712, lon: 32.4940},
         {ad: "Şükran Camii", lat: 37.8705, lon: 32.4890},
-        {ad: "Aziziye Camii", lat: 37.8720, lon: 32.4980}
+        {ad: "Aziziye Camii", lat: 37.8720, lon: 32.4980},
+        {ad: "Kapı Camii", lat: 37.8725, lon: 32.4955}
     ];
 
-    // 2. HARİTAYI BAŞLAT
-    var map = L.map('map').setView([37.871, 32.491], 15);
+    // 2. HARİTAYI BAŞLAT (Konya Sahibata Odaklı)
+    var map = L.map('map', { zoomControl: false }).setView([37.871, 32.491], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    var listeHtml = "";
+    var listeElemani = document.getElementById('liste');
 
-    // 3. VERİLERİ EKRANA BAS
-    camiler.forEach(function(cami) {
+    // 3. DÖNGÜ İLE VERİLERİ HEM HARİTAYA HEM LİSTEYE BAS
+    camiVerileri.forEach(function(item) {
         // Haritaya iğne ekle
-        L.marker([cami.lat, cami.lon]).addTo(map).bindPopup(cami.ad);
+        L.marker([item.lat, item.lon]).addTo(map).bindPopup(item.ad);
 
         // Listeye kart ekle
-        listeHtml += '<div class="card">' +
-            '<h3>' + cami.ad + '</h3>' +
-            '<a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=' + cami.lat + ',' + cami.lon + '" target="_blank">YOL TARİFİ AL</a>' +
-        '</div>';
+        var kart = document.createElement('div');
+        kart.className = 'card';
+        kart.innerHTML = '<span class="cami-adi">' + item.ad + '</span>' +
+                         '<a class="git-btn" href="https://www.google.com/maps/dir/?api=1&destination=' + item.lat + ',' + item.lon + '" target="_blank">YOL TARİFİ AL</a>';
+        listeElemani.appendChild(kart);
     });
-
-    document.getElementById('liste').innerHTML = listeHtml;
 </script>
+
 </body>
 </html>
