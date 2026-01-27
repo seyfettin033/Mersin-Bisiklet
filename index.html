@@ -3,87 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cami Rehberi - Düzenleme Modu</title>
+    <title>Cami Rehberi Pro</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; background: #f0f2f5; }
-        #map { height: 40vh; width: 100%; z-index: 1; border-bottom: 4px solid #2d5a27; }
-        #panel { height: 60vh; overflow-y: auto; padding: 15px; box-sizing: border-box; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; overflow: hidden; }
+        
+        #map { height: 40vh; width: 100%; z-index: 1; border-bottom: 5px solid #2d5a27; }
+        
+        #scan-btn { 
+            position: fixed; top: 15px; left: 50%; transform: translateX(-50%); 
+            z-index: 2000; background: #e30a17; color: white; border: 2px solid white; 
+            padding: 12px 25px; border-radius: 30px; font-weight: bold; font-size: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer;
+        }
+
+        #panel { height: 60vh; overflow-y: auto; padding: 15px; box-sizing: border-box; padding-bottom: 50px; }
+        
+        .status { text-align: center; color: #2d5a27; font-weight: bold; margin-bottom: 15px; background: #d4edda; padding: 10px; border-radius: 8px; font-size: 14px; }
         
         .card { 
-            background: white; 
-            border-radius: 12px; 
-            padding: 15px; 
-            margin-bottom: 15px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            border-left: 6px solid #2d5a27;
+            background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08); border-left: 6px solid #2d5a27;
+            animation: slideIn 0.3s ease-out;
         }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        .cami-adi { font-weight: bold; font-size: 17px; color: #1a1a1a; margin-bottom: 10px; display: block; }
+        .cami-adi { font-weight: bold; font-size: 17px; color: #1a1a1a; margin-bottom: 12px; display: block; }
         
         .btn-group { display: flex; gap: 10px; }
         
         .btn { 
-            flex: 1;
-            text-align: center; 
-            padding: 12px; 
-            text-decoration: none; 
-            border-radius: 8px; 
-            font-weight: bold;
-            font-size: 13px;
-            color: white;
-            transition: opacity 0.2s;
+            flex: 1; text-align: center; padding: 12px; text-decoration: none; 
+            border-radius: 8px; font-weight: bold; font-size: 13px; color: white;
         }
         
-        .nav-btn { background: #007bff; } /* Mavi: Git */
+        .nav-btn { background: #007bff; } /* Mavi: Yol Tarifi */
         .edit-btn { background: #28a745; } /* Yeşil: Düzenle */
-        
-        .btn:active { opacity: 0.7; }
+        .btn:active { transform: scale(0.98); }
     </style>
 </head>
 <body>
 
+<button id="scan-btn" onclick="tara()">🔍 89+ VERİYİ GÖSTER</button>
+
 <div id="map"></div>
-<div id="panel"><div id="liste"></div></div>
+
+<div id="panel">
+    <div id="status" class="status">Başlatmak için yukarıdaki kırmızı butona basın.</div>
+    <div id="liste"></div>
+</div>
 
 <script>
-    // 1. Örnek Veriler (id ve type bilgilerini de ekledik ki düzenleme linki çalışsın)
-    var camiVerileri = [
-        {ad: "Sahibata Camii", lat: 37.8695, lon: 32.4925, type: "node", id: "283404533"},
-        {ad: "Kamberler Camii", lat: 37.8712, lon: 32.4940, type: "node", id: "4455829285"},
-        {ad: "Şükran Camii", lat: 37.8705, lon: 32.4890, type: "way", id: "447178972"},
-        {ad: "Aziziye Camii", lat: 37.8720, lon: 32.4980, type: "node", id: "283404537"},
-        {ad: "Kapı Camii", lat: 37.8725, lon: 32.4955, type: "way", id: "254425251"}
-    ];
-
-    var map = L.map('map', { zoomControl: false }).setView([37.871, 32.491], 15);
+    // Haritayı başlat (Konya Sahibata Odaklı)
+    var map = L.map('map', { zoomControl: false }).setView([37.871, 32.491], 16);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    var markerLayer = L.featureGroup().addTo(map);
 
-    var listeElemani = document.getElementById('liste');
+    // JSONP Gelen Veriyi İşleme Fonksiyonu
+    window.processOSM = function(data) {
+        const status = document.getElementById('status');
+        const liste = document.getElementById('liste');
+        
+        liste.innerHTML = "";
+        markerLayer.clearLayers();
 
-    camiVerileri.forEach(function(item) {
-        L.marker([item.lat, item.lon]).addTo(map).bindPopup(item.ad);
+        if (!data || !data.elements || data.elements.length === 0) {
+            status.innerText = "❌ Bu bölgede kayıtlı cami bulunamadı.";
+            status.style.background = "#f8d7da";
+            return;
+        }
 
-        // OSM Düzenleme Linki Formatı
-        var osmEditUrl = "https://www.openstreetmap.org/edit?" + item.type + "=" + item.id;
-        // Google Navigasyon Linki
-        var googleUrl = "https://www.google.com/maps/dir/?api=1&destination=" + item.lat + "," + item.lon;
+        data.elements.forEach(function(el) {
+            var lat = el.lat || (el.center ? el.center.lat : null);
+            var lon = el.lon || (el.center ? el.center.lng : null);
+            
+            if (lat && lon) {
+                var ad = (el.tags && el.tags.name) ? el.tags.name : "İsimsiz Cami/Mescit";
+                var typeId = el.type + "=" + el.id;
+                
+                // Haritaya Mavi İğne Ekle
+                L.marker([lat, lon]).addTo(markerLayer).bindPopup("<b>" + ad + "</b>");
 
-        var kart = document.createElement('div');
-        kart.className = 'card';
-        kart.innerHTML = 
-            '<span class="cami-adi">' + item.ad + '</span>' +
-            '<div class="btn-group">' +
-                '<a class="btn nav-btn" href="' + googleUrl + '" target="_blank">🚀 YOL TARİFİ</a>' +
-                '<a class="btn edit-btn" href="' + osmEditUrl + '" target="_blank">✍️ DÜZENLE</a>' +
-            '</div>';
-        listeElemani.appendChild(kart);
-    });
+                // Kart Oluştur
+                var kart = document.createElement('div');
+                kart.className = 'card';
+                kart.innerHTML = 
+                    '<span class="cami-adi">' + ad + '</span>' +
+                    '<div class="btn-group">' +
+                        '<a class="btn nav-btn" href="https://www.google.com/maps/dir/?api=1&destination=' + lat + ',' + lon + '" target="_blank">🚀 YOL TARİFİ</a>' +
+                        '<a class="btn edit-btn" href="https://www.openstreetmap.org/edit?' + typeId + '" target="_blank">✍️ DÜZENLE</a>' +
+                    '</div>';
+                liste.appendChild(kart);
+            }
+        });
+
+        status.innerText = "✅ " + data.elements.length + " nokta başarıyla yüklendi.";
+        status.style.background = "#d4edda";
+        
+        // Haritayı tüm iğneleri kapsayacak şekilde odakla
+        if (markerLayer.getLayers().length > 0) {
+            map.fitBounds(markerLayer.getBounds(), {padding: [30, 30]});
+        }
+    };
+
+    function tara() {
+        const status = document.getElementById('status');
+        const b = map.getBounds();
+        const bbox = b.getSouth() + "," + b.getWest() + "," + b.getNorth() + "," + b.getEast();
+        
+        status.innerText = "🛰️ Veriler çekiliyor, lütfen bekleyin...";
+        status.style.background = "#fff3cd";
+
+        // Güvenlik duvarını aşan JSONP Sorgusu
+        const query = '[out:json][timeout:25];(node["amenity"="place_of_worship"]["religion"="muslim"](' + bbox + ');way["amenity"="place_of_worship"]["religion"="muslim"](' + bbox + '););out center;';
+        const script = document.createElement('script');
+        script.src = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query) + "&jsonp=processOSM";
+        
+        // Eski sorguyu temizle
+        const old = document.getElementById('osm-script');
+        if (old) old.remove();
+        script.id = 'osm-script';
+        document.body.appendChild(script);
+    }
 </script>
 
 </body>
 </html>
-
