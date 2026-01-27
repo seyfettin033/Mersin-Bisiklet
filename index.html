@@ -3,95 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cami Rehberi Pro</title>
+    <title>Cami Rehberi Veri Onarıcı</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
-        header { background: #e30a17; color: white; padding: 12px; text-align: center; font-weight: bold; }
-        #map { flex: 1; width: 100%; background: #f0f0f0; }
-        #scan-btn {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+        body { margin: 0; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; }
+        header { background: #e30a17; color: white; padding: 15px; text-align: center; font-weight: bold; z-index: 1000; }
+        #map { flex: 1; background: #eee; }
+        #panel { height: 40vh; overflow-y: auto; background: #fff; border-top: 5px solid #d4af37; padding: 10px; }
+        .btn-tara { 
+            position: absolute; top: 75px; left: 50%; transform: translateX(-50%);
             z-index: 1000; background: #e30a17; color: white; border: 2px solid white;
-            padding: 12px 24px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            padding: 12px 25px; border-radius: 30px; font-weight: bold; cursor: pointer;
         }
-        #panel { height: 38vh; overflow-y: auto; border-top: 4px solid #d4af37; padding: 10px; background: white; }
-        .status { font-size: 13px; color: #e30a17; font-weight: bold; margin-bottom: 8px; text-align: center; }
-        .item { border-bottom: 1px solid #eee; padding: 12px 0; }
-        .btn-row { display: flex; gap: 8px; margin-top: 8px; }
-        .btn { flex: 1; text-align: center; text-decoration: none; padding: 10px; border-radius: 5px; font-size: 12px; font-weight: bold; color: white; border: none; }
-        .blue { background: #007bff; } .green { background: #28a745; } .red { background: #dc3545; }
-        .dot { background: red; border: 2px solid white; border-radius: 50%; }
+        .vakit-bar { background: #333; color: #fff; padding: 8px; font-size: 11px; display: flex; justify-content: space-around; margin-bottom: 10px; border-radius: 5px; }
+        .card { border-bottom: 1px solid #ddd; padding: 12px 0; }
+        .btn-git { display: block; background: #007bff; color: white; text-align: center; padding: 10px; border-radius: 5px; text-decoration: none; margin-top: 5px; font-size: 14px; }
+        .btn-edit { background: #28a745; color: white; padding: 5px 10px; border-radius: 4px; text-decoration: none; font-size: 12px; display: inline-block; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-<header>CAMİ BULUCU PRO</header>
+<header>CAMİ REHBERİ V2.5</header>
 
-<div style="position: relative; flex: 1;">
-    <button id="scan-btn" onclick="manualScan()">📍 BU BÖLGEYİ TARA (3KM)</button>
+<div style="position: relative; flex: 1; display: flex; flex-direction: column;">
+    <button class="btn-tara" onclick="tara()">📍 BURAYI TARA (5KM)</button>
     <div id="map"></div>
 </div>
 
 <div id="panel">
-    <div id="status" class="status">Haritayı kaydırıp 'TARA'ya basın.</div>
-    <div id="results"></div>
+    <div id="vakitler" class="vakit-bar">Vakitler yükleniyor...</div>
+    <div id="bilgi" style="color:red; font-weight:bold; margin-bottom:10px;">Harita yüklendi. Tara butonuna basın.</div>
+    <div id="liste"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    var map = L.map('map', { zoomControl: false, preferCanvas: true }).setView([37.87, 32.48], 14); // Başlangıç Konya Meram
+    // Haritayı başlat
+    var map = L.map('map', {zoomControl: false}).setView([37.87, 32.48], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     var markers = L.layerGroup().addTo(map);
 
-    function manualScan() {
-        var c = map.getCenter();
-        fetchData(c.lat, c.lng);
+    // Cami simgesi
+    function camiEkle(lat, lon, ad, isimsiz, id) {
+        var iconColor = isimsiz ? "red" : "blue";
+        var marker = L.circleMarker([lat, lon], {
+            radius: 8,
+            fillColor: iconColor,
+            color: "#fff",
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.8
+        }).addTo(markers);
+        marker.bindPopup(ad);
     }
 
-    async function fetchData(lat, lon) {
-        document.getElementById('status').innerText = "⏳ 3km alan taranıyor...";
-        document.getElementById('results').innerHTML = "";
+    async function tara() {
+        var c = map.getCenter();
+        document.getElementById('bilgi').innerText = "📡 Veri sunucusuna bağlanılıyor...";
+        document.getElementById('liste').innerHTML = "Lütfen bekleyin...";
         
-        // Menzili 3000 metreye çıkardım ve hem node hem way (alan) verilerini dahil ettim
-        var query = `[out:json][timeout:20];(node["amenity"="place_of_worship"]["religion"="muslim"](around:3000,${lat},${lon});way["amenity"="place_of_worship"]["religion"="muslim"](around:3000,${lat},${lon}););out center;`;
+        // Overpass Turbo ana sunucusu
+        var query = `[out:json];node["amenity"="place_of_worship"]["religion"="muslim"](around:5000,${c.lat},${c.lng});out;`;
         var url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
 
         try {
-            const response = await fetch(url);
-            const data = await response.json();
-            markers.clearLayers();
+            const res = await fetch(url);
+            const data = await res.json();
             
-            if (!data.elements || data.elements.length === 0) {
-                document.getElementById('status').innerText = "❌ Cami bulunamadı. Lütfen haritayı kaydırıp tekrar deneyin.";
+            markers.clearLayers();
+            document.getElementById('liste').innerHTML = "";
+            
+            if(data.elements.length === 0) {
+                document.getElementById('bilgi').innerText = "❌ Hiç veri bulunamadı. Başka bölgeyi deneyin.";
                 return;
             }
 
-            var html = "";
             data.elements.forEach(el => {
-                var la = el.lat || (el.center ? el.center.lat : null);
-                var lo = el.lon || (el.center ? el.center.lng : null);
-                if(!la || !lo) return;
+                var isim = el.tags.name || "İsimsiz Cami";
+                var isimsiz = !el.tags.name;
+                camiEkle(el.lat, el.lon, isim, isimsiz, el.id);
 
-                var name = el.tags.name || "İsimsiz Cami";
-                var osm = `https://www.openstreetmap.org/edit?${el.type}=${el.id}`;
-                
-                if (el.tags.name) {
-                    L.marker([la, lo]).addTo(markers).bindPopup(name);
-                    html += `<div class="item"><b>${name}</b><div class="btn-row"><a href="https://www.google.com/maps/dir/?api=1&destination=${la},${lo}" target="_blank" class="btn blue">YOL TARİFİ</a></div></div>`;
-                } else {
-                    L.marker([la, lo], {icon: L.divIcon({className:'dot', iconSize:[10,10]})}).addTo(markers);
-                    html += `<div class="item" style="background:#fff5f5"><b>İsimsiz İbadethane</b><div class="btn-row"><button onclick="map.setView([${la},${lo}], 18)" class="btn red">BUL</button><a href="${osm}" target="_blank" class="btn green">OSM DÜZENLE</a></div></div>`;
-                }
+                var card = `<div class="card">
+                    <b>${isim}</b><br>
+                    <a href="https://www.google.com/maps/dir/?api=1&destination=${el.lat},${el.lon}" target="_blank" class="btn-git">📍 YOL TARİFİ AL</a>
+                    ${isimsiz ? `<a href="https://www.openstreetmap.org/edit?node=${el.id}" target="_blank" class="btn-edit">✏️ İSİM EKLE</a>` : ""}
+                </div>`;
+                document.getElementById('liste').innerHTML += card;
             });
 
-            document.getElementById('results').innerHTML = html;
-            document.getElementById('status').innerText = "✅ " + data.elements.length + " sonuç bulundu.";
+            document.getElementById('bilgi').innerText = "✅ " + data.elements.length + " nokta bulundu.";
+            vakitGetir(c.lat, c.lng);
 
-        } catch (e) {
-            document.getElementById('status').innerText = "⚠️ Bağlantı hatası. Tekrar deneyin.";
+        } catch (err) {
+            document.getElementById('bilgi').innerText = "⚠️ Bağlantı koptu. İnternetinizi kontrol edip tekrar basın.";
+            console.error(err);
         }
     }
+
+    function vakitGetir(lat, lon) {
+        fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=13`)
+        .then(r => r.json()).then(d => {
+            var v = d.data.timings;
+            document.getElementById('vakitler').innerHTML = `<span>Öğle: ${v.Dhuhr}</span> <span>İkindi: ${v.Asr}</span> <span>Akşam: ${v.Maghrib}</span> <span>Yatsı: ${v.Isha}</span>`;
+        });
+    }
+
+    // İlk açılışta konum almayı dene
+    navigator.geolocation.getCurrentPosition(p => {
+        map.setView([p.coords.latitude, p.coords.longitude], 14);
+        tara();
+    });
 </script>
 </body>
 </html>
