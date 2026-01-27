@@ -3,102 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cami Rehberi v4.0</title>
+    <title>Cami Rehberi Pro</title>
     
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; background: #fff; }
-        header { background: #e30a17; color: white; padding: 10px; text-align: center; height: 50px; font-weight: bold; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: sans-serif; }
         
-        #map-area { position: relative; flex: 1; width: 100%; border-bottom: 2px solid #ddd; }
-        #map { height: 100%; width: 100%; }
-
-        .scan-btn { 
-            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-            z-index: 1001; background: #e30a17; color: white; border: 2px solid white;
-            padding: 12px 25px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        /* Haritayı ekrana sabitleyen kritik stil */
+        #map { 
+            position: absolute; top: 0; bottom: 40%; left: 0; right: 0; 
+            background: #e5e3df; z-index: 1;
         }
 
-        #list-area { height: 40vh; overflow-y: auto; background: #fff; padding: 10px; }
-        .status { font-size: 13px; color: #e30a17; font-weight: bold; text-align: center; margin-bottom: 10px; }
-        .item { border-bottom: 2px solid #f0f0f0; padding: 15px 5px; }
-        .btn-git { display: block; background: #007bff; color: white; text-align: center; padding: 10px; border-radius: 6px; text-decoration: none; margin-top: 10px; font-weight: bold; }
-        .btn-edit { display: inline-block; background: #28a745; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 12px; margin-top: 5px; }
+        /* Alt Liste Paneli */
+        #panel { 
+            position: absolute; bottom: 0; left: 0; right: 0; height: 40%;
+            background: white; z-index: 10; border-top: 5px solid #d4af37;
+            overflow-y: auto; padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.2);
+        }
+
+        /* Tara Butonu */
+        #scan-btn {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; background: #e30a17; color: white; border: 2px solid white;
+            padding: 15px 30px; border-radius: 50px; font-weight: bold; font-size: 16px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5); cursor: pointer;
+        }
+
+        .status { color: #e30a17; font-weight: bold; text-align: center; margin-bottom: 10px; font-size: 14px; }
+        .card { background: #f9f9f9; border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 8px; }
+        .card b { font-size: 16px; color: #333; }
+        .go-btn { display: block; background: #007bff; color: white; text-align: center; padding: 12px; border-radius: 5px; text-decoration: none; margin-top: 10px; font-weight: bold; }
+        
+        /* Mobil Dokunma İyileştirmesi */
+        .card:active { background: #eee; }
     </style>
 </head>
 <body>
 
-<header>CAMİ REHBERİ V4.0</header>
+<button id="scan-btn" onclick="tara()">📍 BÖLGEYİ TARA</button>
+<div id="map"></div>
 
-<div id="map-area">
-    <button class="scan-btn" onclick="tara()">🔍 BU BÖLGEYİ GENİŞ TARA (5KM)</button>
-    <div id="map"></div>
-</div>
-
-<div id="list-area">
-    <div id="status" class="status">Haritayı kaydırıp taramaya basın.</div>
+<div id="panel">
+    <div id="status" class="status">Harita hazır. Lütfen 'TARA' butonuna basın.</div>
     <div id="liste"></div>
 </div>
 
 <script>
+    // 1. Haritayı Başlat (Default: Konya)
     var map = L.map('map', { zoomControl: false }).setView([37.87, 32.48], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     var markers = L.layerGroup().addTo(map);
 
+    // 2. Konum Almayı Dene
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(p) {
+            map.setView([p.coords.latitude, p.coords.longitude], 15);
+            tara();
+        });
+    }
+
     async function tara() {
         var c = map.getCenter();
-        document.getElementById('status').innerText = "⏳ 5km alan taranıyor, lütfen bekleyin...";
-        document.getElementById('liste').innerHTML = "";
+        var status = document.getElementById('status');
+        var liste = document.getElementById('liste');
         
-        // GENİŞLETİLMİŞ SORGU: Hem Nokta (node) hem Alan (way) camileri çeker
-        var q = `[out:json][timeout:30];(node["amenity"="place_of_worship"]["religion"="muslim"](around:5000,${c.lat},${c.lng});way["amenity"="place_of_worship"]["religion"="muslim"](around:5000,${c.lat},${c.lng}););out center;`;
-        var url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(q);
+        status.innerText = "⏳ Veriler aranıyor... (5km)";
+        liste.innerHTML = "";
+
+        // En hafif sorgu: Sadece camileri (amenity=place_of_worship) çekiyoruz
+        var query = `[out:json][timeout:30];node["amenity"="place_of_worship"]["religion"="muslim"](around:5000,${c.lat},${c.lng});out;`;
+        
+        // Alternatif Sunucular (Biri hata verirse diğeri denensin diye URL listesi)
+        var server = "https://overpass-api.de/api/interpreter";
 
         try {
-            const res = await fetch(url);
-            const data = await res.json();
-            markers.clearLayers();
+            const response = await fetch(server, {
+                method: "POST",
+                body: "data=" + encodeURIComponent(query)
+            });
+
+            if (!response.ok) throw new Error("Sunucu hatası");
+            const data = await response.json();
             
-            if(!data.elements || data.elements.length === 0) {
-                document.getElementById('status').innerText = "❌ Sonuç bulunamadı. Haritayı başka yöne kaydırın.";
+            markers.clearLayers();
+            var count = 0;
+
+            if (data.elements.length === 0) {
+                status.innerText = "❌ Cami bulunamadı. Lütfen haritayı kaydırın.";
                 return;
             }
 
-            var html = "";
             data.elements.forEach(el => {
-                var la = el.lat || el.center.lat;
-                var lo = el.lon || el.center.lng;
-                var ad = el.tags.name || "İsimsiz İbadethane";
-                var isimsiz = !el.tags.name;
+                count++;
+                var ad = el.tags.name || "İsimsiz Cami/Mescit";
+                
+                // Haritaya Pin Ekle
+                L.marker([el.lat, el.lon]).addTo(markers).bindPopup(ad);
 
-                // Haritaya ekle
-                L.circleMarker([la, lo], {
-                    radius: 7, fillColor: isimsiz ? "red" : "blue", color: "#fff", weight: 2, fillOpacity: 0.9
-                }).addTo(markers).bindPopup(ad);
-
-                // Listeye ekle
-                html += `<div class="item">
+                // Listeye Kart Ekle
+                var card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
                     <b>${ad}</b>
-                    <div style="display:flex; gap:10px; align-items:center;">
-                        <a href="https://www.google.com/maps/dir/?api=1&destination=${la},${lo}" target="_blank" class="btn-git" style="flex:1">YOL TARİFİ</a>
-                        ${isimsiz ? `<a href="https://www.openstreetmap.org/edit?${el.type}=${el.id}" target="_blank" class="btn-edit">OSM DÜZENLE</a>` : ""}
-                    </div>
-                </div>`;
+                    <a href="https://www.google.com/maps/dir/?api=1&destination=${el.lat},${el.lon}" target="_blank" class="go-btn">YOL TARİFİ</a>
+                `;
+                liste.appendChild(card);
             });
 
-            document.getElementById('liste').innerHTML = html;
-            document.getElementById('status').innerText = "✅ " + data.elements.length + " cami/mescit bulundu.";
+            status.innerText = `✅ ${count} nokta başarıyla yüklendi.`;
 
         } catch (err) {
-            document.getElementById('status').innerText = "⚠️ Sunucu yoğun. Lütfen 5 saniye sonra tekrar basın.";
+            status.innerText = "⚠️ Bağlantı hatası! Lütfen internetinizi kontrol edip tekrar basın.";
+            console.error(err);
         }
     }
-
-    // İlk açılışta otomatik tara
-    window.onload = () => { setTimeout(tara, 1000); };
 </script>
 </body>
 </html>
