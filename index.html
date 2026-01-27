@@ -5,26 +5,30 @@
 <title>Türkiye İsimsiz Camiler</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-body {
+html, body {
+    height: 100%;
     margin: 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont;
-    background: #f4f6f8;
-    color: #1f2937;
+}
+
+body {
+    font-family: system-ui, -apple-system;
+    background: #f3f4f6;
 }
 
 header {
     background: #ffffff;
-    padding: 14px 10px;
+    padding: 12px;
     text-align: center;
     border-bottom: 1px solid #e5e7eb;
 }
 
 header h1 {
-    font-size: 18px;
     margin: 0;
+    font-size: 18px;
     color: #166534;
 }
 
@@ -33,43 +37,8 @@ header small {
 }
 
 #map {
-    height: calc(100vh - 70px);
-}
-
-.popup {
-    font-size: 14px;
-}
-
-.popup-title {
-    font-weight: 700;
-    margin-bottom: 4px;
-}
-
-.popup-loc {
-    font-size: 13px;
-    color: #374151;
-    margin-bottom: 8px;
-}
-
-.btn {
-    display: block;
-    text-align: center;
-    padding: 8px;
-    margin-top: 6px;
-    border-radius: 6px;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 13px;
-}
-
-.osm {
-    background: #166534;
-    color: #fff;
-}
-
-.google {
-    background: #facc15;
-    color: #000;
+    width: 100%;
+    height: calc(100vh - 68px);
 }
 </style>
 </head>
@@ -78,7 +47,7 @@ header small {
 
 <header>
 <h1>🕌 Türkiye İsimsiz Camiler</h1>
-<small>OpenStreetMap düzeltme destek haritası</small>
+<small>OSM veri düzeltme haritası</small>
 </header>
 
 <div id="map"></div>
@@ -86,34 +55,18 @@ header small {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-// Harita
-const map = L.map('map').setView([39.0, 35.0], 6);
+// Harita oluştur
+var map = L.map('map').setView([39, 35], 6);
 
+// Harita katmanı
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
-const layerGroup = L.layerGroup().addTo(map);
-
-// Mahalle bulma (güvenli)
-async function mahalleBul(lat, lon) {
-    try {
-        const r = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=tr`
-        );
-        if (!r.ok) throw new Error();
-        const d = await r.json();
-        const a = d.address || {};
-        return a.neighbourhood || a.suburb || a.village || a.town || "Mahalle bilgisi yok";
-    } catch {
-        return "Mahalle bilgisi yok";
-    }
-}
-
-// Overpass – TÜRKİYE
-const query = `
-[out:json][timeout:60];
+// Overpass sorgusu (Türkiye)
+var query = `
+[out:json][timeout:50];
 (
   node["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](35.8,25.6,42.1,44.8);
   way["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](35.8,25.6,42.1,44.8);
@@ -125,42 +78,38 @@ fetch("https://overpass-api.de/api/interpreter", {
     method: "POST",
     body: query
 })
-.then(r => r.json())
-.then(async data => {
+.then(function(res){ return res.json(); })
+.then(function(data){
 
-    for (const el of data.elements) {
+    data.elements.forEach(function(el){
 
-        const lat = el.lat || el.center.lat;
-        const lon = el.lon || el.center.lon;
+        var lat = el.lat || el.center.lat;
+        var lon = el.lon || el.center.lon;
 
-        const marker = L.circleMarker([lat, lon], {
-            radius: 6,
+        var osmLink =
+          "https://www.openstreetmap.org/edit?editor=id#map=19/" + lat + "/" + lon;
+
+        var googleLink =
+          "https://www.google.com/maps/search/cami/@"+lat+","+lon+",19z";
+
+        var popup =
+          "<b>❗ İsimsiz Cami</b><br><br>" +
+          "<a href='"+osmLink+"' target='_blank'>✍️ OSM'de İsim Gir</a><br>" +
+          "<a href='"+googleLink+"' target='_blank'>🔍 Google’da Kontrol</a>";
+
+        L.circleMarker([lat, lon], {
+            radius: 5,
             color: "#166534",
             fillColor: "#16a34a",
-            fillOpacity: 0.85
-        }).addTo(layerGroup);
+            fillOpacity: 0.9
+        })
+        .addTo(map)
+        .bindPopup(popup);
+    });
 
-        marker.bindPopup(`
-            <div class="popup">
-                <div class="popup-title">❗ İsimsiz Cami</div>
-                <div class="popup-loc">📍 Mahalle bilgisi yükleniyor...</div>
-                <a class="btn osm" target="_blank"
-                   href="https://www.openstreetmap.org/edit?editor=id#map=19/${lat}/${lon}">
-                   ✍️ OSM'de İsim Gir
-                </a>
-                <a class="btn google" target="_blank"
-                   href="https://www.google.com/maps/search/cami/@${lat},${lon},19z">
-                   🔍 Google’da Kontrol
-                </a>
-            </div>
-        `);
-
-        marker.on("popupopen", async e => {
-            const mahalle = await mahalleBul(lat, lon);
-            const elPopup = e.popup.getElement().querySelector(".popup-loc");
-            if (elPopup) elPopup.textContent = "📍 " + mahalle;
-        });
-    }
+})
+.catch(function(err){
+    alert("Veri yüklenemedi: Overpass limiti dolu olabilir.");
 });
 </script>
 
