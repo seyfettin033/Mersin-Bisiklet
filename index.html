@@ -3,77 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cami Rehberi - Sabit Veri</title>
+    <title>Cami Rehberi - Düzenleme Modu</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; background: #eee; }
-        
-        /* Harita Ekranın Yarısı */
-        #map { height: 45vh; width: 100%; z-index: 1; border-bottom: 3px solid #d4af37; }
-        
-        /* Liste Ekranın Diğer Yarısı */
-        #panel { height: 55vh; overflow-y: auto; background: white; padding: 10px; box-sizing: border-box; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; background: #f0f2f5; }
+        #map { height: 40vh; width: 100%; z-index: 1; border-bottom: 4px solid #2d5a27; }
+        #panel { height: 60vh; overflow-y: auto; padding: 15px; box-sizing: border-box; }
         
         .card { 
-            border: 2px solid #d4af37; 
+            background: white; 
+            border-radius: 12px; 
             padding: 15px; 
-            margin-bottom: 12px; 
-            border-radius: 10px; 
-            background: #fff;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 15px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            border-left: 6px solid #2d5a27;
         }
         
-        .cami-adi { font-weight: bold; font-size: 16px; color: #333; margin-bottom: 8px; display: block; }
+        .cami-adi { font-weight: bold; font-size: 17px; color: #1a1a1a; margin-bottom: 10px; display: block; }
         
-        .git-btn { 
-            display: block; 
-            background: #007bff; 
-            color: white; 
+        .btn-group { display: flex; gap: 10px; }
+        
+        .btn { 
+            flex: 1;
             text-align: center; 
             padding: 12px; 
             text-decoration: none; 
-            border-radius: 6px; 
+            border-radius: 8px; 
             font-weight: bold;
-            margin-top: 5px;
+            font-size: 13px;
+            color: white;
+            transition: opacity 0.2s;
         }
+        
+        .nav-btn { background: #007bff; } /* Mavi: Git */
+        .edit-btn { background: #28a745; } /* Yeşil: Düzenle */
+        
+        .btn:active { opacity: 0.7; }
     </style>
 </head>
 <body>
 
 <div id="map"></div>
-<div id="panel">
-    <div id="liste"></div>
-</div>
+<div id="panel"><div id="liste"></div></div>
 
 <script>
-    // 1. VERİLERİ KODUN İÇİNE GÖMDÜK (Dışarıdan çekme yok)
+    // 1. Örnek Veriler (id ve type bilgilerini de ekledik ki düzenleme linki çalışsın)
     var camiVerileri = [
-        {ad: "Sahibata Camii", lat: 37.8695, lon: 32.4925},
-        {ad: "Kamberler Camii", lat: 37.8712, lon: 32.4940},
-        {ad: "Şükran Camii", lat: 37.8705, lon: 32.4890},
-        {ad: "Aziziye Camii", lat: 37.8720, lon: 32.4980},
-        {ad: "Kapı Camii", lat: 37.8725, lon: 32.4955}
+        {ad: "Sahibata Camii", lat: 37.8695, lon: 32.4925, type: "node", id: "283404533"},
+        {ad: "Kamberler Camii", lat: 37.8712, lon: 32.4940, type: "node", id: "4455829285"},
+        {ad: "Şükran Camii", lat: 37.8705, lon: 32.4890, type: "way", id: "447178972"},
+        {ad: "Aziziye Camii", lat: 37.8720, lon: 32.4980, type: "node", id: "283404537"},
+        {ad: "Kapı Camii", lat: 37.8725, lon: 32.4955, type: "way", id: "254425251"}
     ];
 
-    // 2. HARİTAYI BAŞLAT (Konya Sahibata Odaklı)
     var map = L.map('map', { zoomControl: false }).setView([37.871, 32.491], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
     var listeElemani = document.getElementById('liste');
 
-    // 3. DÖNGÜ İLE VERİLERİ HEM HARİTAYA HEM LİSTEYE BAS
     camiVerileri.forEach(function(item) {
-        // Haritaya iğne ekle
         L.marker([item.lat, item.lon]).addTo(map).bindPopup(item.ad);
 
-        // Listeye kart ekle
+        // OSM Düzenleme Linki Formatı
+        var osmEditUrl = "https://www.openstreetmap.org/edit?" + item.type + "=" + item.id;
+        // Google Navigasyon Linki
+        var googleUrl = "https://www.google.com/maps/dir/?api=1&destination=" + item.lat + "," + item.lon;
+
         var kart = document.createElement('div');
         kart.className = 'card';
-        kart.innerHTML = '<span class="cami-adi">' + item.ad + '</span>' +
-                         '<a class="git-btn" href="https://www.google.com/maps/dir/?api=1&destination=' + item.lat + ',' + item.lon + '" target="_blank">YOL TARİFİ AL</a>';
+        kart.innerHTML = 
+            '<span class="cami-adi">' + item.ad + '</span>' +
+            '<div class="btn-group">' +
+                '<a class="btn nav-btn" href="' + googleUrl + '" target="_blank">🚀 YOL TARİFİ</a>' +
+                '<a class="btn edit-btn" href="' + osmEditUrl + '" target="_blank">✍️ DÜZENLE</a>' +
+            '</div>';
         listeElemani.appendChild(kart);
     });
 </script>
