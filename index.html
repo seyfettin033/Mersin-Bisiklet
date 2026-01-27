@@ -2,171 +2,183 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Türkiye Camii Rehberi</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<title>Türkiye Camii Rehberi</title>
 
 <style>
-body {
-    margin: 0;
-    font-family: system-ui, -apple-system;
-    background: #f6f7f8;
+body{
+    margin:0;
+    padding:14px;
+    font-family:system-ui,-apple-system;
+    background:#f2f4f7;
 }
-header {
-    background: #fff;
-    padding: 10px;
-    border-bottom: 1px solid #ddd;
+header{
+    background:#fff;
+    padding:12px;
+    border-radius:10px;
+    margin-bottom:12px;
 }
-.title {
-    text-align: center;
-    font-weight: 600;
-    color: #1f7a3a;
-    margin-bottom: 8px;
+h1{
+    margin:0;
+    font-size:20px;
+    color:#1f5e2b;
+    text-align:center;
 }
-.filters {
-    display: flex;
-    gap: 8px;
+.stats{
+    text-align:center;
+    font-size:14px;
+    margin-top:6px;
+    color:#555;
 }
-select {
-    flex: 1;
-    padding: 8px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
+select{
+    width:100%;
+    margin-top:8px;
+    padding:8px;
+    border-radius:6px;
+    border:1px solid #ccc;
 }
-#map {
-    height: calc(100vh - 95px);
+.card{
+    background:#fff;
+    border-radius:12px;
+    padding:14px;
+    margin-bottom:12px;
+    border-left:5px solid #1f5e2b;
 }
-.btn {
-    display: block;
-    padding: 6px;
-    margin-top: 6px;
-    text-align: center;
-    border-radius: 6px;
-    text-decoration: none;
-    font-weight: 600;
+.cami-adi{
+    font-weight:600;
+    margin-bottom:8px;
+    display:block;
 }
-.osm { background:#2e7d32;color:#fff; }
-.google { background:#fbbc04;color:#000; }
+.btn{
+    display:block;
+    padding:10px;
+    text-align:center;
+    border-radius:6px;
+    font-weight:600;
+    text-decoration:none;
+    margin-top:6px;
+}
+.git{background:#007bff;color:#fff;}
+.osm{background:#28a745;color:#fff;}
+.google{background:#fbbc05;color:#000;}
 </style>
 </head>
 
 <body>
 
 <header>
-    <div class="title">🕌 Türkiye Camii Rehberi</div>
-    <div class="filters">
-        <select id="il"></select>
-        <select id="ilce"></select>
-    </div>
+    <h1>🕌 Türkiye Camii Rehberi</h1>
+    <div class="stats" id="sayac">İl seçiniz</div>
+
+    <select id="il">
+        <option value="">İl Seçiniz</option>
+    </select>
+
+    <select id="ilce" disabled>
+        <option value="">İlçe Seçiniz</option>
+    </select>
 </header>
 
-<div id="map"></div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<div id="liste"></div>
 
 <script>
-// === HARİTA ===
-var map = L.map('map').setView([39,35], 6);
-var markers = [];
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19
-}).addTo(map);
-
-// === İL / İLÇE + BBOX ===
-const data = {
-    "Konya": {
-        bbox:[37.2,31.1,38.3,33.5],
-        ilceler:{
-            "Selçuklu":[37.83,32.44,37.93,32.60],
-            "Meram":[37.70,32.35,37.85,32.55],
-            "Karatay":[37.75,32.55,37.90,32.75]
-        }
-    },
-    "Ankara":{
-        bbox:[39.5,32.4,40.2,33.1],
-        ilceler:{
-            "Çankaya":[39.85,32.75,39.95,32.95],
-            "Keçiören":[39.95,32.80,40.05,32.95]
-        }
-    }
-};
-
-// === DROPDOWN DOLDUR ===
 const ilSelect = document.getElementById("il");
 const ilceSelect = document.getElementById("ilce");
+const liste = document.getElementById("liste");
+const sayac = document.getElementById("sayac");
 
-ilSelect.innerHTML = `<option value="">İl Seçiniz</option>`;
-for(let il in data){
+// 81 il (sadece isim – hafif)
+const iller = [
+"Adana","Adıyaman","Afyonkarahisar","Ağrı","Amasya","Ankara","Antalya","Artvin","Aydın",
+"Balıkesir","Bilecik","Bingöl","Bitlis","Bolu","Burdur","Bursa","Çanakkale","Çankırı",
+"Çorum","Denizli","Diyarbakır","Edirne","Elazığ","Erzincan","Erzurum","Eskişehir",
+"Gaziantep","Giresun","Gümüşhane","Hakkari","Hatay","Isparta","Mersin","İstanbul",
+"İzmir","Kars","Kastamonu","Kayseri","Kırklareli","Kırşehir","Kocaeli","Konya",
+"Kütahya","Malatya","Manisa","Kahramanmaraş","Mardin","Muğla","Muş","Nevşehir",
+"Niğde","Ordu","Rize","Sakarya","Samsun","Siirt","Sinop","Sivas","Tekirdağ",
+"Tokat","Trabzon","Tunceli","Şanlıurfa","Uşak","Van","Yozgat","Zonguldak","Aksaray",
+"Bayburt","Karaman","Kırıkkale","Batman","Şırnak","Bartın","Ardahan","Iğdır","Yalova",
+"Karabük","Kilis","Osmaniye","Düzce"
+];
+
+iller.forEach(il=>{
     ilSelect.innerHTML += `<option value="${il}">${il}</option>`;
-}
+});
 
+// İl seçildiğinde ilçeleri getir
 ilSelect.onchange = ()=>{
     ilceSelect.innerHTML = `<option value="">İlçe Seçiniz</option>`;
-    let il = ilSelect.value;
-    if(!il) return;
+    ilceSelect.disabled = true;
+    liste.innerHTML = "";
+    sayac.innerText = "İlçeler yükleniyor…";
 
-    for(let ilce in data[il].ilceler){
-        ilceSelect.innerHTML += `<option value="${ilce}">${ilce}</option>`;
-    }
-    loadCamiler(data[il].bbox);
+    fetch(`https://nominatim.openstreetmap.org/search?country=Turkey&state=${ilSelect.value}&format=json&limit=1`)
+    .then(r=>r.json())
+    .then(()=>{
+        // İlçeleri Nominatim'den çek
+        return fetch(`https://nominatim.openstreetmap.org/search?country=Turkey&state=${ilSelect.value}&format=json&addressdetails=1&limit=100`);
+    })
+    .then(r=>r.json())
+    .then(data=>{
+        let ilceler = new Set();
+        data.forEach(d=>{
+            if(d.address && d.address.county){
+                ilceler.add(d.address.county);
+            }
+        });
+
+        ilceler.forEach(i=>{
+            ilceSelect.innerHTML += `<option value="${i}">${i}</option>`;
+        });
+
+        ilceSelect.disabled = false;
+        sayac.innerText = "İlçe seçiniz";
+    });
 };
 
+// İlçe seçildiğinde camileri getir
 ilceSelect.onchange = ()=>{
-    let il = ilSelect.value;
-    let ilce = ilceSelect.value;
-    if(il && ilce){
-        loadCamiler(data[il].ilceler[ilce]);
-    }
-};
+    liste.innerHTML = "Yükleniyor…";
+    sayac.innerText = "Hesaplanıyor…";
 
-// === CAMİLERİ YÜKLE ===
-function loadCamiler(bbox){
-    markers.forEach(m=>map.removeLayer(m));
-    markers = [];
+    fetch(`https://nominatim.openstreetmap.org/search?country=Turkey&state=${ilSelect.value}&county=${ilceSelect.value}&format=json&limit=1`)
+    .then(r=>r.json())
+    .then(d=>{
+        if(!d.length) return;
 
-    let query = `
-    [out:json][timeout:40];
-    (
-      node["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](${bbox.join(",")});
-      way["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](${bbox.join(",")});
-    );
-    out center;
-    `;
+        let b = d[0].boundingbox;
+        let bbox = [b[0],b[2],b[1],b[3]];
 
-    fetch("https://overpass-api.de/api/interpreter",{
-        method:"POST",
-        body:query
+        let query = `
+        [out:json][timeout:40];
+        (
+          node["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](${bbox.join(",")});
+          way["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](${bbox.join(",")});
+        );
+        out center;
+        `;
+
+        return fetch("https://overpass-api.de/api/interpreter",{method:"POST",body:query});
     })
     .then(r=>r.json())
     .then(d=>{
-        if(d.elements.length){
-            map.setView([
-                d.elements[0].lat || d.elements[0].center.lat,
-                d.elements[0].lon || d.elements[0].center.lon
-            ],12);
-        }
-
+        sayac.innerText = `${d.elements.length} isimsiz cami bulundu`;
+        let html="";
         d.elements.forEach(el=>{
             let lat = el.lat || el.center.lat;
             let lon = el.lon || el.center.lon;
-
-            let osm = `https://www.openstreetmap.org/edit?editor=id#map=19/${lat}/${lon}`;
-            let google = `https://www.google.com/maps/search/cami/@${lat},${lon},19z`;
-
-            let m = L.circleMarker([lat,lon],{
-                radius:6,color:"#1f7a3a",fillOpacity:0.9
-            }).addTo(map)
-            .bindPopup(`
-                <b>❗ İsimsiz Cami</b>
-                <a class="btn osm" href="${osm}" target="_blank">OSM’de Düzenle</a>
-                <a class="btn google" href="${google}" target="_blank">Google Kontrol</a>
-            `);
-            markers.push(m);
+            html+=`
+            <div class="card">
+                <span class="cami-adi">❗ İsimsiz Cami (OSM ID: ${el.id})</span>
+                <a class="btn osm" target="_blank"
+                   href="https://www.openstreetmap.org/edit?editor=id#map=19/${lat}/${lon}">
+                   ✍️ OSM’de İsim Gir
+                </a>
+            </div>`;
         });
+        liste.innerHTML = html || "Bu ilçede isimsiz cami yok 🎉";
     });
-}
+};
 </script>
 
 </body>
