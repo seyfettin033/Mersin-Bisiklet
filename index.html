@@ -2,78 +2,112 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Türkiye Camii Rehberi - OSM Düzenleme</title>
+    <title>Türkiye Camii Rehberi | OSM Veri Düzenleme</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
     <style>
-        html, body { height: 100%; margin: 0; }
-        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f4f5f7; color: #1f2937; display: flex; flex-direction: column; }
-        
-        header { background: #ffffff; padding: 15px; border-bottom: 2px solid #14532d; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1000; }
-        header h1 { margin: 0; font-size: 20px; color: #14532d; text-align: center; }
-        header small { display: block; text-align: center; color: #6b7280; margin-top: 4px; }
+        :root {
+            --primary: #14532d;
+            --secondary: #16a34a;
+            --bg: #f4f5f7;
+            --text: #1f2937;
+        }
+
+        html, body { height: 100%; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+
+        header { background: #ffffff; padding: 15px; border-bottom: 3px solid var(--primary); box-shadow: 0 2px 10px rgba(0,0,0,0.05); text-align: center; }
+        header h1 { margin: 0; font-size: 20px; color: var(--primary); }
+        header small { color: #6b7280; font-size: 13px; font-weight: 500; }
 
         .etiket { background: #ecfdf5; color: #065f46; text-align: center; font-size: 12px; padding: 8px; border-bottom: 1px solid #d1fae5; }
 
-        .controls { padding: 12px; background: #ffffff; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid #e5e7eb; }
-        select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; font-size: 15px; cursor: pointer; background: #fff; }
+        .controls { padding: 15px; background: #ffffff; border-bottom: 1px solid #e5e7eb; display: flex; flex-direction: column; gap: 10px; }
+        select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; font-size: 15px; background-color: #fff; cursor: pointer; outline: none; }
+        select:focus { border-color: var(--secondary); ring: 2px var(--secondary); }
 
-        #sayac { background: #f9fafb; padding: 10px; text-align: center; font-size: 14px; font-weight: 600; color: #14532d; }
+        /* Dinamik Sayaç Tasarımı */
+        #sayac { 
+            padding: 12px; 
+            text-align: center; 
+            font-size: 14px; 
+            font-weight: 700; 
+            background: #fff; 
+            border-bottom: 1px solid #e5e7eb;
+            transition: all 0.3s ease;
+        }
+        .loading { color: #2563eb; background: #eff6ff !important; }
+        .success { color: #16a34a; background: #f0fdf4 !important; }
+        .empty { color: #92400e; background: #fffbeb !important; }
+        .error { color: #dc2626; background: #fef2f2 !important; }
 
-        #map { flex-grow: 1; width: 100%; }
+        #map { flex-grow: 1; width: 100%; z-index: 1; }
 
-        /* Popup Tasarımı */
-        .popup-box { padding: 5px; min-width: 160px; }
-        .popup-box b { color: #b91c1c; display: block; margin-bottom: 8px; font-size: 15px; }
-        .btn { display: block; text-align: center; padding: 10px; margin-top: 8px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 13px; transition: opacity 0.2s; }
-        .btn:hover { opacity: 0.85; }
-        .osm { background: #166534; color: #ffffff; }
-        .google { background: #fde047; color: #000000; }
+        /* Popup Stilleri */
+        .leaflet-popup-content-wrapper { border-radius: 12px; padding: 5px; }
+        .popup-container { min-width: 180px; text-align: center; }
+        .popup-container b { display: block; margin-bottom: 10px; color: #b91c1c; font-size: 14px; }
+        .btn { display: block; text-align: center; padding: 10px; margin-top: 6px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 13px; transition: 0.2s; }
+        .osm-btn { background: #166534; color: #ffffff; }
+        .google-btn { background: #fde047; color: #000000; }
+        .btn:hover { opacity: 0.8; transform: translateY(-1px); }
     </style>
 </head>
 <body>
 
 <header>
     <h1>🕌 Türkiye Camii Rehberi</h1>
-    <small>Veri Geliştirme ve İsimlendirme Paneli</small>
+    <small>İsimsiz Camileri Belirleme ve OSM Katkı Paneli</small>
 </header>
 
 <div class="etiket">
-    💡 OpenStreetMap üzerindeki eksik cami isimlerini tamamlayarak topluma katkıda bulunun.
+    ℹ️ Bu harita OpenStreetMap verilerini iyileştirmek için geliştirilmiştir.
 </div>
 
 <div class="controls">
     <select id="il">
-        <option value="">Bir il seçin ve taramaya başlayın...</option>
+        <option value="">Lütfen bir il seçin...</option>
         <option>Adana</option><option>Adıyaman</option><option>Afyonkarahisar</option><option>Ağrı</option><option>Amasya</option><option>Ankara</option><option>Antalya</option><option>Artvin</option><option>Aydın</option><option>Balıkesir</option><option>Bilecik</option><option>Bingöl</option><option>Bitlis</option><option>Bolu</option><option>Burdur</option><option>Bursa</option><option>Çanakkale</option><option>Çankırı</option><option>Çorum</option><option>Denizli</option><option>Diyarbakır</option><option>Edirne</option><option>Elazığ</option><option>Erzincan</option><option>Erzurum</option><option>Eskişehir</option><option>Gaziantep</option><option>Giresun</option><option>Gümüşhane</option><option>Hakkari</option><option>Hatay</option><option>Isparta</option><option>Mersin</option><option>İstanbul</option><option>İzmir</option><option>Kars</option><option>Kastamonu</option><option>Kayseri</option><option>Kırklareli</option><option>Kırşehir</option><option>Kocaeli</option><option>Konya</option><option>Kütahya</option><option>Malatya</option><option>Manisa</option><option>Kahramanmaraş</option><option>Mardin</option><option>Muğla</option><option>Muş</option><option>Nevşehir</option><option>Niğde</option><option>Ordu</option><option>Rize</option><option>Sakarya</option><option>Samsun</option><option>Siirt</option><option>Sinop</option><option>Sivas</option><option>Tekirdağ</option><option>Tokat</option><option>Trabzon</option><option>Tunceli</option><option>Şanlıurfa</option><option>Uşak</option><option>Van</option><option>Yozgat</option><option>Zonguldak</option><option>Aksaray</option><option>Bayburt</option><option>Karaman</option><option>Kırıkkale</option><option>Batman</option><option>Şırnak</option><option>Bartın</option><option>Ardahan</option><option>Iğdır</option><option>Yalova</option><option>Karabük</option><option>Kilis</option><option>Osmaniye</option><option>Düzce</option>
     </select>
 </div>
 
-<div id="sayac">Başlamak için listeden bir şehir seçin.</div>
+<div id="sayac">Analiz için bir şehir seçmeniz bekleniyor.</div>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-    var map = L.map('map').setView([38.9637, 35.2433], 6);
+    // Harita Başlangıç (Türkiye Merkezi)
+    var map = L.map('map').setView([39.0, 35.0], 6);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        attribution: '© OpenStreetMap Katkıda Bulunanlar'
+        attribution: '© OpenStreetMap Contributors'
     }).addTo(map);
 
-    var layer = L.layerGroup().addTo(map);
+    var layerGroup = L.layerGroup().addTo(map);
 
     document.getElementById("il").addEventListener("change", function () {
         var il = this.value;
-        if (!il) return;
+        var sayac = document.getElementById("sayac");
+        
+        if (!il) {
+            sayac.innerHTML = "Analiz için bir şehir seçmeniz bekleniyor.";
+            sayac.className = "";
+            return;
+        }
 
-        layer.clearLayers();
-        document.getElementById("sayac").innerHTML = "⌛ " + il + " verisi Overpass'ten çekiliyor...";
+        // Sayaç: Yükleniyor Durumu
+        layerGroup.clearLayers();
+        sayac.innerHTML = `⌛ ${il} verileri sorgulanıyor, lütfen bekleyin...`;
+        sayac.className = "loading";
 
+        // Overpass API Sorgusu
         var query = `
-        [out:json][timeout:60];
+        [out:json][timeout:50];
         area["name"="${il}"]["admin_level"="4"]->.a;
         (
           node["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](area.a);
@@ -85,59 +119,66 @@
             method: "POST",
             body: query
         })
-        .then(r => r.json())
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
         .then(data => {
-            var elements = data.elements;
-            var sayac = document.getElementById("sayac");
+            var adet = data.elements.length;
+            var points = [];
 
-            if (elements.length === 0) {
-                sayac.innerHTML = "🎉 Harika! " + il + " ilinde isimsiz cami kalmamış.";
+            if (adet === 0) {
+                sayac.innerHTML = `🎉 Harika! ${il} ilinde isimsiz cami bulunamadı.`;
+                sayac.className = "empty";
                 return;
             }
 
-            sayac.innerHTML = il + " – <b>" + elements.length + "</b> isimsiz cami bulundu.";
+            // Sayaç: Başarılı Durumu
+            sayac.innerHTML = `📍 ${il} ilinde <b>${adet}</b> adet isimsiz cami tespit edildi.`;
+            sayac.className = "success";
 
-            var coords = [];
+            data.elements.forEach(el => {
+                var lat = el.lat || (el.center ? el.center.lat : null);
+                var lon = el.lon || (el.center ? el.center.lon : null);
+                
+                if (lat && lon) {
+                    points.push([lat, lon]);
 
-            elements.forEach(el => {
-                var lat = el.lat || el.center.lat;
-                var lon = el.lon || el.center.lon;
-                coords.push([lat, lon]);
+                    var osmEditUrl = `https://www.openstreetmap.org/edit?editor=id#map=19/${lat}/${lon}`;
+                    var googleSearchUrl = `https://www.google.com/maps/search/${lat},${lon}`;
 
-                // Google Haritalar linki düzeltildi
-                var gMapLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
-                var osmEditLink = `https://www.openstreetmap.org/edit?editor=id#map=19/${lat}/${lon}`;
+                    var popupHtml = `
+                        <div class="popup-container">
+                            <b>⚠️ İsimsiz Kayıt</b>
+                            <a href="${osmEditUrl}" target="_blank" class="btn osm-btn">✍️ OSM'de İsmini Gir</a>
+                            <a href="${googleSearchUrl}" target="_blank" class="btn google-btn">🔍 Google'da Doğrula</a>
+                        </div>
+                    `;
 
-                var popupContent = `
-                <div class="popup-box">
-                    <b>⚠️ İsimsiz Cami</b>
-                    <a class="btn osm" target="_blank" href="${osmEditLink}">✍️ OSM'de Düzenle</a>
-                    <a class="btn google" target="_blank" href="${gMapLink}">🔍 Google'da Doğrula</a>
-                </div>`;
-
-                L.circleMarker([lat, lon], {
-                    radius: 7,
-                    color: "#064e3b",
-                    fillColor: "#10b981",
-                    fillOpacity: 0.8,
-                    weight: 2
-                })
-                .addTo(layer)
-                .bindPopup(popupContent);
+                    L.circleMarker([lat, lon], {
+                        radius: 7,
+                        color: "#14532d",
+                        fillColor: "#22c55e",
+                        fillOpacity: 0.9,
+                        weight: 2
+                    })
+                    .addTo(layerGroup)
+                    .bindPopup(popupHtml);
+                }
             });
 
-            // Haritayı bulunan noktaların olduğu bölgeye odakla
-            if (coords.length > 0) {
-                map.fitBounds(L.latLngBounds(coords), { padding: [30, 30] });
+            // Haritayı verilere göre otomatik odakla
+            if (points.length > 0) {
+                map.fitBounds(L.latLngBounds(points), { padding: [40, 40] });
             }
         })
         .catch(err => {
             console.error(err);
-            document.getElementById("sayac").innerHTML = "❌ Veri çekilirken bir hata oluştu.";
+            sayac.innerHTML = "❌ Veri alınırken bir hata oluştu. Overpass API yoğun olabilir.";
+            sayac.className = "error";
         });
     });
 </script>
 
 </body>
 </html>
-
