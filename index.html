@@ -3,31 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cami Rehberi - %100 Görünürlük</title>
+    <title>Cami Rehberi - Kesin Çözüm</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: sans-serif; }
-        #map { height: 50vh; width: 100%; z-index: 1; border-bottom: 2px solid #ccc; }
-        #panel { height: 50vh; width: 100%; background: #fff; overflow-y: scroll; padding: 10px; box-sizing: border-box; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; background: #fff; }
+        #map { height: 40vh; width: 100%; position: relative; z-index: 1; }
+        #panel { height: 60vh; width: 100%; overflow-y: auto; background: white; padding: 10px; box-sizing: border-box; }
         #scan-btn { 
-            position: fixed; top: 15px; left: 50%; transform: translateX(-50%); 
-            z-index: 2000; background: #e30a17; color: white; border: 2px solid white; 
-            padding: 12px 20px; border-radius: 25px; font-weight: bold; font-size: 14px;
+            position: fixed; top: 10px; left: 50%; transform: translateX(-50%); 
+            z-index: 9999; background: #e30a17; color: white; border: 2px solid white; 
+            padding: 15px 30px; border-radius: 50px; font-weight: bold; font-size: 16px;
         }
-        .status { color: #e30a17; font-weight: bold; text-align: center; margin-bottom: 10px; background: #fff1f1; padding: 10px; }
-        .card { border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 8px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
-        .btn { flex: 1; text-align: center; text-decoration: none; padding: 10px; border-radius: 5px; font-size: 12px; font-weight: bold; color: white; }
-        .blue { background: #007bff; } .green { background: #28a745; }
+        .card { border: 2px solid #000; padding: 15px; margin-bottom: 10px; border-radius: 10px; background: #f0f0f0; display: block !important; visibility: visible !important; }
+        .status { color: #e30a17; font-weight: bold; text-align: center; margin-bottom: 10px; border: 1px solid #e30a17; padding: 10px; }
+        .btn-link { display: inline-block; background: #007bff; color: white; padding: 10px; margin-top: 5px; text-decoration: none; border-radius: 5px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<button id="scan-btn" onclick="tara()">🚀 49 VERİYİ GÖRSELLEŞTİR</button>
+<button id="scan-btn" onclick="tara()">🚀 49 NOKTAYI ZORLA LİSTELE</button>
+
 <div id="map"></div>
+
 <div id="panel">
-    <div id="status" class="status">Butona basın, noktalar kırmızı iğne olarak belirecek.</div>
+    <div id="status" class="status">Cihaz hazır. Butona basın.</div>
     <div id="liste"></div>
 </div>
 
@@ -36,63 +36,48 @@
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     var markerLayer = L.featureGroup().addTo(map);
 
-    // İNTERNETTEN İKON İNDİRMEYEN, KODLA ÇİZİLEN ÖZEL İĞNE (CircleMarker)
-    function ozelMarkerEkle(lat, lon, ad) {
-        var markerOptions = {
-            radius: 10,
-            fillColor: "#e30a17",
-            color: "#fff",
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.8
-        };
-        L.circleMarker([lat, lon], markerOptions).addTo(markerLayer).bindPopup("<b>"+ad+"</b>");
-    }
-
     window.processOSM = function(data) {
-        const status = document.getElementById('status');
-        const liste = document.getElementById('liste');
-        liste.innerHTML = "";
+        var status = document.getElementById('status');
+        var liste = document.getElementById('liste');
+        var htmlIcerik = ""; 
+        
         markerLayer.clearLayers();
 
-        if (!data || !data.elements) return;
-
-        data.elements.forEach(function(el) {
-            var lat = el.lat || (el.center ? el.center.lat : null);
-            var lon = el.lon || (el.center ? el.center.lng : null);
+        if (data && data.elements) {
+            data.elements.forEach(function(el) {
+                var lat = el.lat || (el.center ? el.center.lat : null);
+                var lon = el.lon || (el.center ? el.center.lng : null);
+                
+                if (lat && lon) {
+                    var ad = (el.tags && el.tags.name) ? el.tags.name : "İsimsiz Cami";
+                    
+                    // 1. Haritaya basit bir kırmızı daire ekle
+                    L.circleMarker([lat, lon], { radius: 10, color: 'red' }).addTo(markerLayer);
+                    
+                    // 2. Tablo yerine basit metin blokları oluştur
+                    htmlIcerik += '<div class="card">' +
+                        '<strong>' + ad + '</strong><br>' +
+                        '<a class="btn-link" href="https://www.google.com/maps?q=' + lat + ',' + lon + '" target="_blank">📍 GOOGLE HARİTADA GÖR</a>' +
+                    '</div>';
+                }
+            });
             
-            if (lat && lon) {
-                var ad = (el.tags && el.tags.name) ? el.tags.name : "İsimsiz İbadethane";
-                
-                // 1. Haritaya Kırmızı Nokta Ekle
-                ozelMarkerEkle(lat, lon, ad);
-                
-                // 2. Listeye Kart Ekle
-                var card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = '<b>' + ad + '</b><div class="btn-group">' +
-                    '<a href="https://www.google.com/maps/dir/?api=1&destination=' + lat + ',' + lon + '" target="_blank" class="btn blue">GİT</a>' +
-                    '<a href="https://www.openstreetmap.org/edit?' + el.type + '=' + el.id + '" target="_blank" class="btn green">DÜZENLE</a>' +
-                '</div>';
-                liste.appendChild(card);
-            }
-        });
-
-        status.innerText = "✅ " + data.elements.length + " nokta haritada KIRMIZI iğne olarak işaretlendi.";
-        if (markerLayer.getLayers().length > 0) {
+            // Veriyi tek bir seferde ekrana bas (Bu yöntem asla hata vermez)
+            liste.innerHTML = htmlIcerik;
+            status.innerText = "✅ " + data.elements.length + " nokta aşağıda listelendi!";
             map.fitBounds(markerLayer.getBounds());
         }
     };
 
     function tara() {
-        const b = map.getBounds();
-        const bbox = b.getSouth() + "," + b.getWest() + "," + b.getNorth() + "," + b.getEast();
-        document.getElementById('status').innerText = "🛰️ 49 nokta işleniyor...";
+        var b = map.getBounds();
+        var bbox = b.getSouth() + "," + b.getWest() + "," + b.getNorth() + "," + b.getEast();
+        document.getElementById('status').innerText = "⏳ Veri dökülüyor...";
 
-        const query = '[out:json][timeout:25];(node["amenity"="place_of_worship"]["religion"="muslim"](' + bbox + ');way["amenity"="place_of_worship"]["religion"="muslim"](' + bbox + '););out center;';
-        const script = document.createElement('script');
-        script.src = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query) + "&jsonp=processOSM";
-        document.body.appendChild(script);
+        var q = '[out:json][timeout:25];(node["amenity"="place_of_worship"]["religion"="muslim"](' + bbox + ');way["amenity"="place_of_worship"]["religion"="muslim"](' + bbox + '););out center;';
+        var s = document.createElement('script');
+        s.src = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(q) + "&jsonp=processOSM";
+        document.body.appendChild(s);
     }
 </script>
 </body>
