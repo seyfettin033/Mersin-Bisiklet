@@ -3,60 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cami Rehberi Veri Onarıcı</title>
+    <title>Cami Rehberi v8.0</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: sans-serif; background: #fff; }
-        #map { position: absolute; top: 0; bottom: 45%; left: 0; right: 0; z-index: 5; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, sans-serif; background: #fff; }
+        #map { position: absolute; top: 0; bottom: 45%; left: 0; right: 0; z-index: 1; background: #eee; }
         #panel { 
             position: absolute; bottom: 0; left: 0; right: 0; height: 45%;
-            background: white; z-index: 20; border-top: 5px solid #d4af37;
-            overflow-y: auto; padding: 10px; box-shadow: 0 -5px 15px rgba(0,0,0,0.2);
+            background: white; z-index: 10; border-top: 4px solid #d4af37;
+            overflow-y: auto; padding: 10px;
         }
         #scan-btn {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
             z-index: 1000; background: #e30a17; color: white; border: 2px solid white;
-            padding: 12px 25px; border-radius: 30px; font-weight: bold; font-size: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            padding: 12px 25px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
         }
-        .status { color: #e30a17; font-weight: bold; text-align: center; margin-bottom: 10px; background: #fff1f1; padding: 8px; border-radius: 5px; }
-        .card { border: 1px solid #eee; padding: 12px; margin-bottom: 10px; border-radius: 8px; background: #fdfdfd; border-left: 5px solid #007bff; }
-        .card.no-name { border-left-color: #dc3545; }
-        .btn-group { display: flex; gap: 5px; margin-top: 10px; }
+        .status { color: #e30a17; font-weight: bold; text-align: center; margin-bottom: 10px; font-size: 14px; background: #fff1f1; padding: 8px; border-radius: 5px; }
+        .card { border: 1px solid #eee; padding: 12px; margin-bottom: 8px; border-radius: 8px; background: #fafafa; }
+        .btn-group { display: flex; gap: 5px; margin-top: 8px; }
         .btn { flex: 1; text-align: center; text-decoration: none; padding: 10px; border-radius: 5px; font-size: 11px; font-weight: bold; color: white; border: none; }
         .blue { background: #007bff; } .green { background: #28a745; } .red { background: #dc3545; }
-        
-        /* Markerlar için özel stil */
-        .leaflet-marker-icon { filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); }
     </style>
 </head>
 <body>
 
-<button id="scan-btn" onclick="tara()">📍 81+ NOKTAYI GÖSTER</button>
+<button id="scan-btn" onclick="derinTara()">🔍 83 NOKTAYI LİSTELE VE GÖSTER</button>
 <div id="map"></div>
 
 <div id="panel">
-    <div id="status" class="status">Cihaz konumu bekleniyor...</div>
+    <div id="status" class="status">Başlamak için 'TARA'ya basın.</div>
     <div id="liste"></div>
 </div>
 
 <script>
-    // Haritayı başlat
+    // Haritayı zorla oluştur
     var map = L.map('map', { zoomControl: false, preferCanvas: true }).setView([37.87, 32.48], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    var markerLayer = L.featureGroup().addTo(map); // Daha güçlü bir katman yönetimi
+    var markerLayer = L.featureGroup().addTo(map);
 
-    async function tara() {
+    async function derinTara() {
         var c = map.getCenter();
         var status = document.getElementById('status');
         var liste = document.getElementById('liste');
         
-        status.innerText = "🛰️ Veriler haritaya işleniyor...";
+        status.innerText = "⏳ Veriler işleniyor, lütfen bekleyin...";
         liste.innerHTML = "";
+        markerLayer.clearLayers();
 
+        // En geniş kapsamlı sorgu
         var query = `[out:json][timeout:30];(node["amenity"="place_of_worship"]["religion"="muslim"](around:5000,${c.lat},${c.lng});way["amenity"="place_of_worship"]["religion"="muslim"](around:5000,${c.lat},${c.lng});node["building"="mosque"](around:5000,${c.lat},${c.lng});way["building"="mosque"](around:5000,${c.lat},${c.lng}););out center;`;
         
         try {
@@ -66,60 +63,56 @@
             });
 
             const data = await response.json();
-            markerLayer.clearLayers();
+            var count = 0;
 
-            if (!data.elements || data.elements.length === 0) {
-                status.innerText = "❌ Sonuç yok.";
-                return;
-            }
-
+            // DÖNGÜ BAŞLANGICI - Hata olsa bile devam etmesi için Try-Catch döngü içinde
             data.elements.forEach(el => {
-                // Koordinatları zorla sayıya çeviriyoruz (Önemli!)
-                var lat = parseFloat(el.lat || (el.center ? el.center.lat : 0));
-                var lon = parseFloat(el.lon || (el.center ? el.center.lng : 0));
-                
-                if(lat === 0 || lon === 0) return;
+                try {
+                    var lat = parseFloat(el.lat || (el.center ? el.center.lat : null));
+                    var lon = parseFloat(el.lon || (el.center ? el.center.lng : null));
+                    
+                    if(!lat || !lon) return; // Koordinat yoksa bu noktayı atla
 
-                var ad = el.tags.name || "İsimsiz Cami/Mescit";
-                var isNamed = !!el.tags.name;
-                var osmUrl = `https://www.openstreetmap.org/edit?${el.type}=${el.id}`;
+                    var ad = el.tags.name || "İsimsiz Cami/Mescit";
+                    var isNamed = !!el.tags.name;
+                    var osmUrl = `https://www.openstreetmap.org/edit?${el.type}=${el.id}`;
 
-                // Haritaya iğne (Marker) ekle
-                var marker = L.marker([lat, lon]).addTo(markerLayer);
-                marker.bindPopup(`<b>${ad}</b><br><a href="${osmUrl}" target="_blank">OSM'de Düzenle</a>`);
+                    // 1. Haritaya Marker Ekle
+                    L.marker([lat, lon]).addTo(markerLayer).bindPopup(ad);
 
-                // Listeye kart ekle
-                var card = document.createElement('div');
-                card.className = 'card' + (isNamed ? '' : ' no-name');
-                card.innerHTML = `
-                    <b>${isNamed ? ad : '⚠️ İSİM EKSİK!'}</b>
-                    <div class="btn-group">
-                        <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}" target="_blank" class="btn blue">YOL TARİFİ</a>
-                        <a href="${osmUrl}" target="_blank" class="btn green">OSM DÜZENLE</a>
-                        <button onclick="zoomTo(${lat}, ${lon})" class="btn red">BUL</button>
-                    </div>
-                `;
-                liste.appendChild(card);
+                    // 2. Listeye Kart Ekle
+                    var card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <b style="color:${isNamed ? '#333' : '#e30a17'}">${ad}</b>
+                        <div class="btn-group">
+                            <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}" target="_blank" class="btn blue">YOL TARİFİ</a>
+                            <a href="${osmUrl}" target="_blank" class="btn green">OSM DÜZENLE</a>
+                            <button onclick="map.setView([${lat},${lon}], 18)" class="btn red">BUL</button>
+                        </div>
+                    `;
+                    liste.appendChild(card);
+                    count++;
+                } catch (e) {
+                    console.error("Bir nokta işlenirken hata oluştu, atlanıyor...");
+                }
             });
 
-            status.innerText = `✅ ${data.elements.length} nokta haritaya yerleştirildi.`;
-            // Haritayı tüm markerları kapsayacak şekilde otomatik odakla
-            if(data.elements.length > 0) map.fitBounds(markerLayer.getBounds(), {padding: [20, 20]});
+            status.innerText = `✅ ${count} nokta hem haritaya hem listeye eklendi.`;
+            
+            // Markerlar bittikten sonra haritayı odakla
+            if(count > 0) map.fitBounds(markerLayer.getBounds(), {padding: [30, 30]});
 
         } catch (err) {
-            status.innerText = "⚠️ Hata: Veri işlenemedi.";
+            status.innerText = "⚠️ Bağlantı hatası. Tekrar deneyin.";
         }
-    }
-
-    function zoomTo(lat, lon) {
-        map.setView([lat, lon], 18);
     }
 
     // İlk açılış
     navigator.geolocation.getCurrentPosition(p => {
         map.setView([p.coords.latitude, p.coords.longitude], 15);
-        tara();
-    }, () => { tara(); });
+        derinTara();
+    }, () => { status.innerText = "📍 Konum kapalı. Haritayı kaydırıp taratın."; });
 </script>
 </body>
 </html>
