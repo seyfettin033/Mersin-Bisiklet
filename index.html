@@ -33,4 +33,109 @@
         #alt-panel { background: white; height: 35vh; overflow-y: auto; border-top: 4px solid #d4af37; z-index: 2000; }
         .vakitler { display: flex; overflow-x: auto; background: #333; color: white; padding: 8px; gap: 10px; font-size: 11px; }
         .liste { list-style: none; padding: 0; margin: 0; }
-        .liste li { padding: 15px; border-bottom: 1px solid #eee; display: flex; flex-direction: column; gap: 8
+        .liste li { padding: 15px; border-bottom: 1px solid #eee; display: flex; flex-direction: column; gap: 8px; }
+        
+        /* BUTONLAR */
+        .btn-grup { display: flex; gap: 5px; }
+        .m-btn { flex: 1; text-align: center; text-decoration: none; padding: 10px; border-radius: 6px; font-size: 12px; font-weight: bold; color: white; border: none; }
+        .blue { background: #007bff; }
+        .green { background: #28a745; }
+        .red { background: #dc3545; }
+
+        .pulse { background: red; border: 2px solid white; border-radius: 50%; animation: p 1.5s infinite; }
+        @keyframes p { 0% { transform: scale(0.8); } 70% { transform: scale(1.1); box-shadow: 0 0 0 5px rgba(255,0,0,0); } 100% { transform: scale(0.8); } }
+    </style>
+</head>
+<body>
+
+<header>
+    <div style="width:25px; height:15px; background: url('https://flagcdn.com/tr.svg') no-repeat center/contain;"></div>
+    <div class="arama-kutusu">
+        <input type="text" id="cityInput" placeholder="Şehir/İlçe Ara..." onkeypress="if(event.key==='Enter') searchCity()">
+        <i class="fa fa-search" style="color:red; align-self:center" onclick="searchCity()"></i>
+    </div>
+</header>
+
+<div id="harita-konteynir">
+    <button id="tara-btn" onclick="startScan()">BU BÖLGEYİ TARA</button>
+    <div id="map"></div>
+</div>
+
+<div id="alt-panel">
+    <div id="times" class="vakitler">Konum bekleniyor...</div>
+    <ul id="results" class="liste"></ul>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // 1. Haritayı Sıfırla
+    const map = L.map('map', { zoomControl: false }).setView([39, 35], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    const markers = L.layerGroup().addTo(map);
+
+    // 2. Konum Al
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            map.setView([lat, lon], 15);
+            fetchData(lat, lon);
+            getTimes(lat, lon);
+        }, () => { alert("Lütfen konumu açın!"); });
+    }
+
+    function searchCity() {
+        const q = document.getElementById('cityInput').value;
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`)
+        .then(r => r.json()).then(data => {
+            if(data[0]) {
+                map.setView([data[0].lat, data[0].lon], 14);
+                startScan();
+            }
+        });
+    }
+
+    function startScan() {
+        const c = map.getCenter();
+        document.getElementById("tara-btn").style.display = "none";
+        fetchData(center.lat, center.lng); // Hata buradaydı, 'center' yerine 'c' olmalıydı. Düzelttim:
+        fetchData(c.lat, c.lng);
+        getTimes(c.lat, c.lng);
+    }
+
+    function getTimes(lat, lon) {
+        fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=13`)
+        .then(r => r.json()).then(d => {
+            const t = d.data.timings;
+            document.getElementById("times").innerHTML = `<span>İmsak: ${t.Fajr}</span><span>Öğle: ${t.Dhuhr}</span><span>İkindi: ${t.Asr}</span><span>Akşam: ${t.Maghrib}</span><span>Yatsı: ${t.Isha}</span>`;
+        });
+    }
+
+    function fetchData(lat, lon) {
+        const q = `[out:json][timeout:25];(node["amenity"="place_of_worship"]["religion"="muslim"](around:2500,${lat},${lon});way["amenity"="place_of_worship"]["religion"="muslim"](around:2500,${lat},${lon}););out center;`;
+        fetch("https://overpass-api.de/api/interpreter", { method: "POST", body: "data=" + encodeURIComponent(q) })
+        .then(r => r.json()).then(data => {
+            markers.clearLayers();
+            let html = "";
+            data.elements.forEach(el => {
+                const la = el.lat || el.center.lat;
+                const lo = el.lon || el.center.lng;
+                const name = el.tags.name || "İsimsiz Cami";
+                const osm = `https://www.openstreetmap.org/edit?${el.type}=${el.id}`;
+
+                if (el.tags.name) {
+                    L.marker([la, lo]).addTo(markers).bindPopup(name);
+                    html += `<li><b>${name}</b><div class="btn-grup"><a href="https://www.google.com/maps/dir/?api=1&destination=${la},${lo}" target="_blank" class="m-btn blue">NAVİGASYON</a></div></li>`;
+                } else {
+                    L.marker([la, lo], {icon: L.divIcon({className:'pulse', iconSize:[12,12]})}).addTo(markers);
+                    html += `<li style="background:#fff5f5"><b style="color:red">Eksik İsim!</b><div class="btn-grup"><button onclick="map.setView([${la},${lo}], 18)" class="m-btn red">BUL</button><a href="${osm}" target="_blank" class="m-btn green">OSM DÜZENLE</a></div></li>`;
+                }
+            });
+            document.getElementById("results").innerHTML = html || "<li>Bulunamadı.</li>";
+        });
+    }
+
+    map.on('moveend', () => { document.getElementById("tara-btn").style.display = "block"; });
+</script>
+</body>
+</html>
