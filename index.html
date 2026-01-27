@@ -3,91 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cami Rehberi Pro</title>
+    <title>Cami Rehberi & Veri Avcısı</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     
     <style>
-        :root { --ana: #e30a17; --altin: #d4af37; --beyaz: #ffffff; }
-        
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin:0; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; background: #f4f4f4; overflow: hidden; }
         
-        body { 
-            margin:0; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            height: 100vh; 
-            display: flex; 
-            flex-direction: column; 
-            overflow: hidden; 
-            background: #f4f4f4; 
-        }
-        
-        header { 
-            background: var(--ana); 
-            color: white; 
-            padding: 10px; 
-            display: flex; 
-            align-items: center; 
-            border-bottom: 3px solid #b10812; 
-            z-index: 2001;
-            height: 60px;
-        }
+        /* ÜST PANEL */
+        header { background: #e30a17; color: white; padding: 10px; display: flex; align-items: center; gap: 10px; z-index: 2001; }
+        .arama-kutusu { flex: 1; display: flex; background: white; border-radius: 20px; padding: 5px 15px; }
+        .arama-kutusu input { border: none; outline: none; width: 100%; font-size: 16px; }
 
-        .arama-grubu { 
-            flex: 1; 
-            display: flex; 
-            background: white; 
-            border-radius: 25px; 
-            padding: 5px 15px; 
-            align-items: center; 
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .arama-grubu input { 
-            border: none; 
-            outline: none; 
-            flex: 1; 
-            height: 30px; 
-            font-size: 16px; /* Mobil odaklanmada zoom yapmaması için 16px */
-        }
-
-        #harita-konteynir { position: relative; flex: 1; width: 100%; z-index: 1; }
+        /* HARİTA ALANI */
+        #harita-konteynir { position: relative; flex: 1; z-index: 1; }
         #map { height: 100%; width: 100%; }
 
-        /* MOBİL TARA BUTONU */
-        #yuzen-tara-btn {
-            position: absolute;
-            top: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            background: var(--ana);
-            color: white;
-            border: 2px solid white;
-            padding: 12px 24px;
-            border-radius: 30px;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            display: none;
-            font-size: 14px;
-            cursor: pointer;
-            white-space: nowrap;
+        /* TARA BUTONU */
+        #tara-btn {
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; background: #e30a17; color: white; border: 2px solid white;
+            padding: 10px 20px; border-radius: 25px; font-weight: bold; font-size: 14px;
+            display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
 
         /* ALT PANEL */
-        #alt-panel { 
-            background: var(--beyaz); 
-            height: 38vh; 
-            overflow-y: auto; 
-            border-top: 4px solid var(--altin); 
-            z-index: 1000;
-            padding: 0;
-        }
-
-        .vakit-bari { 
-            display: flex; 
-            overflow-x: auto; 
-            background: #333; 
-            color: white; 
-            padding:
+        #alt-panel { background: white; height: 35vh; overflow-y: auto; border-top: 4px solid #d4af37; z-index: 2000; }
+        .vakitler { display: flex; overflow-x: auto; background: #333; color: white; padding: 8px; gap: 10px; font-size: 11px; }
+        .liste { list-style: none; padding: 0; margin: 0; }
+        .liste li { padding: 15px; border-bottom: 1px solid #eee; display: flex; flex-direction: column; gap: 8
