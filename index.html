@@ -8,215 +8,113 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-html, body {
-    height: 100%;
-    margin: 0;
-}
-
-body {
-    font-family: system-ui, -apple-system;
-    background: #f4f5f7;
-    color: #1f2937;
-}
-
+body { margin:0; font-family:system-ui; background:#f5f6f7; }
 header {
-    background: #ffffff;
-    padding: 12px;
-    border-bottom: 1px solid #e5e7eb;
+    padding:12px;
+    text-align:center;
+    background:#ffffff;
+    border-bottom:1px solid #ddd;
 }
+header b { color:#1f7a3a; }
+#map { height: calc(100vh - 60px); }
 
-header h1 {
-    margin: 0;
-    font-size: 18px;
-    color: #14532d;
-    text-align: center;
+.popup-btn {
+    display:block;
+    margin-top:6px;
+    padding:6px;
+    text-align:center;
+    border-radius:6px;
+    font-weight:600;
+    text-decoration:none;
 }
-
-header small {
-    display: block;
-    text-align: center;
-    color: #6b7280;
-}
-
-.etiket {
-    background: #ecfdf5;
-    color: #065f46;
-    text-align: center;
-    font-size: 12px;
-    padding: 6px;
-    border-bottom: 1px solid #d1fae5;
-}
-
-.filters {
-    display: flex;
-    gap: 8px;
-    padding: 10px;
-    background: #ffffff;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-select {
-    flex: 1;
-    padding: 8px;
-    border-radius: 6px;
-    border: 1px solid #d1d5db;
-    font-size: 14px;
-}
-
-#map {
-    height: calc(100vh - 160px);
-}
-
-/* Popup */
-.leaflet-popup-content-wrapper {
-    border-radius: 10px;
-}
-
-.popup {
-    font-size: 14px;
-}
-
-.popup b {
-    color: #14532d;
-}
-
-.popup a {
-    display: block;
-    text-align: center;
-    padding: 8px;
-    margin-top: 6px;
-    border-radius: 6px;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 13px;
-}
-
-.osm {
-    background: #166534;
-    color: #ffffff;
-}
-
-.google {
-    background: #fde047;
-    color: #000000;
-}
+.osm { background:#2e7d32; color:#fff; }
+.google { background:#fbbc04; color:#000; }
 </style>
 </head>
 
 <body>
 
 <header>
-<h1>🕌 Türkiye Camii Rehberi</h1>
-<small>İsimsiz Camiler – OSM Düzeltme Haritası</small>
+🕌 <b>Türkiye Camii Rehberi</b><br>
+<small>İle tıkla → İsimsiz camiler çıksın</small>
 </header>
-
-<div class="etiket">
-ℹ️ Bu proje OpenStreetMap verilerinin doğruluğunu artırmak amacıyla, tamamen toplumsal fayda için hazırlanmıştır.
-</div>
-
-<div class="filters">
-<select id="il">
-<option value="">İl seçiniz</option>
-<option>Adana</option><option>Adıyaman</option><option>Afyonkarahisar</option>
-<option>Ağrı</option><option>Amasya</option><option>Ankara</option>
-<option>Antalya</option><option>Artvin</option><option>Aydın</option>
-<option>Balıkesir</option><option>Bilecik</option><option>Bingöl</option>
-<option>Bitlis</option><option>Bolu</option><option>Burdur</option>
-<option>Bursa</option><option>Çanakkale</option><option>Çankırı</option>
-<option>Çorum</option><option>Denizli</option><option>Diyarbakır</option>
-<option>Edirne</option><option>Elazığ</option><option>Erzincan</option>
-<option>Erzurum</option><option>Eskişehir</option><option>Gaziantep</option>
-<option>Giresun</option><option>Gümüşhane</option><option>Hakkari</option>
-<option>Hatay</option><option>Isparta</option><option>Mersin</option>
-<option>İstanbul</option><option>İzmir</option><option>Kars</option>
-<option>Kastamonu</option><option>Kayseri</option><option>Kırklareli</option>
-<option>Kırşehir</option><option>Kocaeli</option><option>Konya</option>
-<option>Kütahya</option><option>Malatya</option><option>Manisa</option>
-<option>Kahramanmaraş</option><option>Mardin</option><option>Muğla</option>
-<option>Muş</option><option>Nevşehir</option><option>Niğde</option>
-<option>Ordu</option><option>Rize</option><option>Sakarya</option>
-<option>Samsun</option><option>Siirt</option><option>Sinop</option>
-<option>Sivas</option><option>Tekirdağ</option><option>Tokat</option>
-<option>Trabzon</option><option>Tunceli</option><option>Şanlıurfa</option>
-<option>Uşak</option><option>Van</option><option>Yozgat</option>
-<option>Zonguldak</option><option>Aksaray</option><option>Bayburt</option>
-<option>Karaman</option><option>Kırıkkale</option><option>Batman</option>
-<option>Şırnak</option><option>Bartın</option><option>Ardahan</option>
-<option>Iğdır</option><option>Yalova</option><option>Karabük</option>
-<option>Kilis</option><option>Osmaniye</option><option>Düzce</option>
-</select>
-</div>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-var map = L.map('map').setView([39, 35], 6);
+const map = L.map("map").setView([39, 35], 6);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19
 }).addTo(map);
 
-var layer = L.layerGroup().addTo(map);
+let camiLayer = L.layerGroup().addTo(map);
 
-document.getElementById("il").addEventListener("change", function () {
+/* İL MERKEZLERİ (örnek – tüm 81 il eklenebilir) */
+const iller = [
+  { ad:"Konya", lat:37.8715, lon:32.4846 },
+  { ad:"Ankara", lat:39.9208, lon:32.8541 },
+  { ad:"İstanbul", lat:41.0082, lon:28.9784 },
+  { ad:"İzmir", lat:38.4237, lon:27.1428 },
+  { ad:"Bursa", lat:40.1950, lon:29.0600 }
+];
 
-    var il = this.value;
-    if (!il) return;
+/* İl markerları */
+iller.forEach(il => {
+    L.circleMarker([il.lat, il.lon], {
+        radius:8,
+        color:"#1f7a3a",
+        fillColor:"#1f7a3a",
+        fillOpacity:0.9
+    })
+    .addTo(map)
+    .bindTooltip(il.ad)
+    .on("click", () => ilYukle(il));
+});
 
-    layer.clearLayers();
+function ilYukle(il) {
+    map.setView([il.lat, il.lon], 10);
+    camiLayer.clearLayers();
 
-    var query = `
-    [out:json][timeout:30];
-    area["name"="${il}"]["admin_level"="4"]->.a;
+    const query = `
+    [out:json][timeout:40];
     (
-      node["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](area.a);
-      way["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](area.a);
+      node["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](${il.lat-0.5},${il.lon-0.5},${il.lat+0.5},${il.lon+0.5});
+      way["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](${il.lat-0.5},${il.lon-0.5},${il.lat+0.5},${il.lon+0.5});
     );
     out center;
     `;
 
     fetch("https://overpass-api.de/api/interpreter", {
-        method: "POST",
-        body: query
+        method:"POST",
+        body:query
     })
     .then(r => r.json())
     .then(data => {
-
-        if (data.elements.length === 0) {
-            alert("Bu ilde isimsiz cami bulunamadı.");
-        }
-
         data.elements.forEach(el => {
+            const lat = el.lat || el.center.lat;
+            const lon = el.lon || el.center.lon;
 
-            var lat = el.lat || el.center.lat;
-            var lon = el.lon || el.center.lon;
-
-            var popup = `
-            <div class="popup">
-                <b>❗ İsimsiz Cami</b>
-                <a class="osm" target="_blank"
-                   href="https://www.openstreetmap.org/edit?editor=id#map=19/${lat}/${lon}">
-                   ✍️ OSM'de İsim Gir
-                </a>
-                <a class="google" target="_blank"
-                   href="https://www.google.com/maps/search/cami/@${lat},${lon},19z">
-                   🔍 Google’da Kontrol
-                </a>
-            </div>`;
+            const osm = `https://www.openstreetmap.org/edit?editor=id#map=19/${lat}/${lon}`;
+            const google = `https://www.google.com/maps/search/cami/@${lat},${lon},19z`;
 
             L.circleMarker([lat, lon], {
-                radius: 5,
-                color: "#14532d",
-                fillColor: "#22c55e",
-                fillOpacity: 0.85
+                radius:5,
+                color:"#c62828",
+                fillColor:"#c62828",
+                fillOpacity:0.9
             })
-            .addTo(layer)
-            .bindPopup(popup);
+            .addTo(camiLayer)
+            .bindPopup(`
+                <b>${il.ad} – İsimsiz Cami</b>
+                <a class="popup-btn osm" href="${osm}" target="_blank">✍️ OSM’de Düzenle</a>
+                <a class="popup-btn google" href="${google}" target="_blank">🔍 Google’da Bak</a>
+            `);
         });
     });
-});
+}
 </script>
 
 </body>
