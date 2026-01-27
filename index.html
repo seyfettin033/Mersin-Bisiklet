@@ -3,61 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cami Rehberi - Kesin Çözüm</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <title>Cami Rehberi - Kesin Liste</title>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; background: #fff; }
-        #map { height: 40vh; width: 100%; z-index: 1; border-bottom: 3px solid #2d5a27; }
-        #panel { height: 60vh; overflow-y: auto; padding: 15px; box-sizing: border-box; background: #fdfdfd; }
-        .card { background: white; border: 1px solid #ddd; padding: 15px; margin-bottom: 12px; border-radius: 10px; border-left: 6px solid #2d5a27; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .cami-adi { font-weight: bold; font-size: 16px; margin-bottom: 10px; display: block; color: #333; }
-        .btn-group { display: flex; gap: 8px; }
-        .btn { flex: 1; text-align: center; padding: 12px; text-decoration: none; border-radius: 6px; font-weight: bold; color: white; font-size: 12px; }
-        .nav-btn { background: #007bff; }
-        .edit-btn { background: #28a745; }
+        body { margin: 0; padding: 20px; font-family: sans-serif; background: #f0f2f5; color: #333; }
+        .baslik { text-align: center; color: #2d5a27; font-size: 22px; font-weight: bold; margin-bottom: 20px; border-bottom: 3px solid #d4af37; padding-bottom: 10px; }
+        .card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-left: 8px solid #2d5a27; }
+        .cami-adi { font-size: 18px; font-weight: bold; display: block; margin-bottom: 15px; color: #1a1a1a; }
+        .btn-grup { display: flex; flex-direction: column; gap: 10px; }
+        .btn { text-align: center; padding: 15px; text-decoration: none; border-radius: 10px; font-weight: bold; color: white; font-size: 14px; }
+        .nav-btn { background: #007bff; } /* Mavi: Git */
+        .edit-btn { background: #28a745; } /* Yeşil: Düzenle */
+        .sayac { text-align: center; font-size: 12px; color: #777; margin-top: 30px; }
     </style>
 </head>
 <body>
 
-<div id="map"></div>
-<div id="panel"><div id="liste"></div></div>
+<div class="baslik">🕌 KONYA CAMİ REHBERİ</div>
+
+<div id="liste">
+    </div>
+
+<div class="sayac">Bulunduğunuz bölgedeki kayıtlı veriler listelenmiştir.</div>
 
 <script>
-    // 1. VERİLERİ BURAYA SABİTLEDİK (Engellenme ihtimali %0)
-    var camiVerileri = [
-        {ad: "Sahibata Camii", lat: 37.8695, lon: 32.4925, id: "283404533"},
-        {ad: "Kamberler Camii", lat: 37.8712, lon: 32.4940, id: "4455829285"},
-        {ad: "Şükran Camii", lat: 37.8705, lon: 32.4890, id: "447178972"},
-        {ad: "Aziziye Camii", lat: 37.8720, lon: 32.4980, id: "283404537"},
-        {ad: "Kapı Camii", lat: 37.8725, lon: 32.4955, id: "254425251"},
-        {ad: "Piri Mehmet Paşa Camii", lat: 37.8701, lon: 32.4998, id: "4455829281"},
-        {ad: "Selimiye Camii", lat: 37.8748, lon: 32.5048, id: "283404540"}
+    // Tarayıcının engellemeyeceği şekilde verileri buraya kemikleştiriyoruz
+    var camiler = [
+        {ad: "Sahibata Camii", lat: 37.8695, lon: 32.4925},
+        {ad: "Kamberler Camii", lat: 37.8712, lon: 32.4940},
+        {ad: "Şükran Camii", lat: 37.8705, lon: 32.4890},
+        {ad: "Aziziye Camii", lat: 37.8720, lon: 32.4980},
+        {ad: "Kapı Camii", lat: 37.8725, lon: 32.4955},
+        {ad: "Piri Mehmet Paşa Camii", lat: 37.8701, lon: 32.4998},
+        {ad: "Selimiye Camii", lat: 37.8748, lon: 32.5048}
     ];
 
-    var map = L.map('map', { zoomControl: false }).setView([37.871, 32.491], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    var listeDiv = document.getElementById('liste');
+    var html = "";
 
-    var listeHtml = "";
-    camiVerileri.forEach(function(item) {
-        // Harita İğnesi
-        L.marker([item.lat, item.lon]).addTo(map).bindPopup(item.ad);
+    camiler.forEach(function(item) {
+        var g_link = "https://www.google.com/maps/dir/?api=1&destination=" + item.lat + "," + item.lon;
+        var o_link = "https://www.openstreetmap.org/edit?#map=19/" + item.lat + "/" + item.lon;
 
-        // OSM Düzenleme Linki (Doğrudan Koordinata Odaklı)
-        var osmEditUrl = "https://www.openstreetmap.org/edit?#map=19/" + item.lat + "/" + item.lon;
-        // Google Navigasyon Linki
-        var googleUrl = "https://www.google.com/maps/dir/?api=1&destination=" + item.lat + "," + item.lon;
-
-        listeHtml += '<div class="card">' +
-            '<span class="cami-adi">' + item.ad + '</span>' +
-            '<div class="btn-group">' +
-                '<a class="btn nav-btn" href="' + googleUrl + '" target="_blank">🚀 YOL TARİFİ</a>' +
-                '<a class="btn edit-btn" href="' + osmEditUrl + '" target="_blank">✍️ DÜZENLE</a>' +
-            '</div>' +
-        '</div>';
+        html += '<div class="card">' +
+                '<span class="cami-adi">' + item.ad + '</span>' +
+                '<div class="btn-grup">' +
+                    '<a href="' + g_link + '" class="btn nav-btn" target="_blank">🚀 YOL TARİFİ AL</a>' +
+                    '<a href="' + o_link + '" class="btn edit-btn" target="_blank">✍️ BİLGİ DÜZENLE</a>' +
+                '</div>' +
+            '</div>';
     });
 
-    document.getElementById('liste').innerHTML = listeHtml;
+    listeDiv.innerHTML = html;
 </script>
+
 </body>
 </html>
