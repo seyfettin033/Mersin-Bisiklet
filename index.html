@@ -48,30 +48,34 @@ header small {
 }
 
 .filters {
-    display: flex;
-    gap: 8px;
     padding: 10px;
     background: #ffffff;
     border-bottom: 1px solid #e5e7eb;
 }
 
 select {
-    flex: 1;
+    width: 100%;
     padding: 8px;
     border-radius: 6px;
     border: 1px solid #d1d5db;
     font-size: 14px;
 }
 
+#sayac {
+    background: #ffffff;
+    padding: 10px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: #14532d;
+    border-bottom: 1px solid #e5e7eb;
+}
+
 #map {
-    height: calc(100vh - 160px);
+    height: calc(100vh - 210px);
 }
 
 /* Popup */
-.leaflet-popup-content-wrapper {
-    border-radius: 10px;
-}
-
 .popup {
     font-size: 14px;
 }
@@ -140,12 +144,15 @@ select {
 <option>Trabzon</option><option>Tunceli</option><option>Şanlıurfa</option>
 <option>Uşak</option><option>Van</option><option>Yozgat</option>
 <option>Zonguldak</option><option>Aksaray</option><option>Bayburt</option>
-<option>Karaman</option><option>Kırıkkale</option><option>Batman</option>
-<option>Şırnak</option><option>Bartın</option><option>Ardahan</option>
-<option>Iğdır</option><option>Yalova</option><option>Karabük</option>
-<option>Kilis</option><option>Osmaniye</option><option>Düzce</option>
+<option>Karaman</option><option>Kırıkkale</option>
+<option>Batman</option><option>Şırnak</option><option>Bartın</option>
+<option>Ardahan</option><option>Iğdır</option><option>Yalova</option>
+<option>Karabük</option><option>Kilis</option><option>Osmaniye</option>
+<option>Düzce</option>
 </select>
 </div>
+
+<div id="sayac">Henüz il seçilmedi</div>
 
 <div id="map"></div>
 
@@ -166,9 +173,10 @@ document.getElementById("il").addEventListener("change", function () {
     if (!il) return;
 
     layer.clearLayers();
+    document.getElementById("sayac").innerHTML = il + " – Yükleniyor...";
 
     var query = `
-    [out:json][timeout:30];
+    [out:json][timeout:40];
     area["name"="${il}"]["admin_level"="4"]->.a;
     (
       node["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](area.a);
@@ -184,8 +192,14 @@ document.getElementById("il").addEventListener("change", function () {
     .then(r => r.json())
     .then(data => {
 
-        if (data.elements.length === 0) {
-            alert("Bu ilde isimsiz cami bulunamadı.");
+        var adet = data.elements.length;
+        var sayac = document.getElementById("sayac");
+
+        if (adet === 0) {
+            sayac.innerHTML = il + " – İsimsiz cami bulunamadı";
+            return;
+        } else {
+            sayac.innerHTML = il + " – <b>" + adet + "</b> isimsiz cami bulundu";
         }
 
         data.elements.forEach(el => {
