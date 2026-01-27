@@ -3,135 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Türkiye Camileri | Görev Modu</title>
+    <title>Cami Bulucu | Kesin Çözüm</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     
     <style>
-        :root { --ana: #e30a17; --altin: #d4af37; --krem: #f4f4f4; }
-        body { margin:0; font-family: 'Segoe UI', sans-serif; background: var(--krem); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        :root { --ana: #e30a17; --altin: #d4af37; --beyaz: #ffffff; }
+        body { margin:0; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: #f4f4f4; }
         
-        header { background: var(--ana); color: white; padding: 12px; display: flex; align-items: center; gap: 15px; border-bottom: 3px solid #c10914; z-index: 1001; }
-        .flag { width: 40px; height: 26px; background: url('https://flagcdn.com/tr.svg') no-repeat center; background-size: contain; }
+        header { background: var(--ana); color: white; padding: 12px; display: flex; align-items: center; border-bottom: 3px solid #b10812; z-index: 9999; }
+        .flag { width: 35px; height: 23px; background: url('https://flagcdn.com/tr.svg') no-repeat center/contain; margin-right: 10px; }
         
-        #namaz { display: flex; justify-content: center; gap: 6px; padding: 8px; font-size: 11px; background: white; border-bottom: 1px solid #ddd; }
-        #namaz span { background: #f8f8f8; padding: 2px 5px; border-radius: 4px; border: 1px solid #eee; font-weight: bold; }
+        #harita-konteynir { position: relative; flex: 1; width: 100%; }
+        #map { height: 100%; width: 100%; z-index: 1; }
 
-        #harita-alani { position: relative; flex: 1; }
-        #map { height: 100%; width: 100%; }
-        
-        /* BU BÖLGEDE ARA BUTONU (Gelişmiş Stil) */
-        .ara-katman-ozel {
-            background: white;
-            padding: 8px 15px;
-            border: 2px solid var(--ana);
-            border-radius: 20px;
-            font-weight: bold;
+        /* BU BÖLGEDE ARA BUTONU - KESİN KONUM */
+        #yuzen-ara-btn {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2000; /* Haritanın çok üstünde */
+            background: var(--beyaz);
             color: var(--ana);
+            border: 2px solid var(--ana);
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            display: none; /* Harita hareket edince JS ile açılacak */
+            display: none; /* Sadece harita hareket edince çıkar */
+            white-space: nowrap;
         }
 
-        #panel { background: white; padding: 15px; border-top: 2px solid var(--altin); overflow-y: auto; height: 30vh; }
-        .istatistik { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: bold; }
+        #alt-panel { background: var(--beyaz); height: 35vh; overflow-y: auto; border-top: 3px solid var(--altin); z-index: 999; padding: 10px; }
+        .vakitler { display: flex; justify-content: space-around; background: #eee; padding: 5px; font-size: 11px; margin-bottom: 10px; border-radius: 5px; }
         
-        #sonuclar { list-style: none; padding: 0; margin: 0; }
-        #sonuclar li { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
-        .yol-btn { background: #007bff; color: white; text-decoration: none; padding: 6px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; border: none; }
-        .gorev-btn { background: #dc3545; }
+        .cami-liste { list-style: none; padding: 0; margin: 0; }
+        .cami-liste li { padding: 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+        .btn-git { background: #007bff; color: white; text-decoration: none; padding: 6px 12px; border-radius: 5px; font-size: 12px; }
+        .btn-gorev { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; }
 
-        .gorev-marker-css { background: red; border: 2px solid white; border-radius: 50%; animation: pulse 1.5s infinite; }
-        @keyframes pulse {
-            0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
-            70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(255, 0, 0, 0); }
-            100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
-        }
+        .pulse-marker { background: red; border: 2px solid white; border-radius: 50%; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(0.8); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255,0,0,0); } 100% { transform: scale(0.8); } }
     </style>
 </head>
 <body>
 
 <header>
     <div class="flag"></div>
-    <div>
-        <h1 style="margin:0; font-size:16px;">TÜRKİYE CAMİLERİ</h1>
-        <small id="durum">Konum alınıyor...</small>
-    </div>
+    <h1 style="margin:0; font-size:18px;">TÜRKİYE CAMİLERİ</h1>
 </header>
 
-<div id="namaz">Yükleniyor...</div>
-
-<div id="harita-alani">
+<div id="harita-konteynir">
+    <button id="yuzen-ara-btn" onclick="elleAra()">
+        <i class="fa-solid fa-magnifying-glass"></i> BU BÖLGEDE ARA
+    </button>
     <div id="map"></div>
 </div>
 
-<div id="panel">
-    <div class="istatistik">
-        <span>🕌 <span id="sayac">0</span> Cami</span>
-        <span style="color:red">🎯 <span id="gorev-sayac">0</span> Görev</span>
+<div id="alt-panel">
+    <div id="namaz-vakitleri" class="vakitler">Vakitler yükleniyor...</div>
+    <div style="display:flex; justify-content: space-between; font-weight: bold; padding: 5px;">
+        <span>🕌 <span id="c-say">0</span> Cami</span>
+        <span style="color:red">🎯 <span id="g-say">0</span> Görev</span>
     </div>
-    <ul id="sonuclar"></ul>
+    <ul id="sonuclar" class="cami-liste"></ul>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // Haritayı başlat
     const map = L.map('map', { zoomControl: false }).setView([39, 35], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    const markerGrubu = L.layerGroup().addTo(map);
+    const markers = L.layerGroup().addTo(map);
 
-    // "Bu Bölgede Ara" Butonunu Harita İçine Ekle
-    const araKontrol = L.control({ position: 'topcenter' }); // Not: Özel CSS ile ortalayacağız
-    araKontrol.onAdd = function() {
-        const div = L.DomUtil.create('div', 'ara-katman-ozel');
-        div.id = "btn-ara-main";
-        div.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> BU BÖLGEDE ARA';
-        div.onclick = function(e) {
-            L.DomEvent.stopPropagation(e); // Haritaya tıklamayı engelle
-            bolgedeAra();
-        };
-        return div;
-    };
-    araKontrol.addTo(map);
-
-    // Butonu ekranın üst-ortasına sabitlemek için küçük bir yama
-    const btnContainer = document.querySelector('.ara-katman-ozel').parentElement;
-    btnContainer.style.left = "50%";
-    btnContainer.style.transform = "translateX(-50%)";
-    btnContainer.style.top = "10px";
-
-    // Konum İşlemleri
+    // Başlangıç Konumu
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(pos => {
-            const {latitude: lat, longitude: lon} = pos.coords;
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
             map.setView([lat, lon], 15);
-            verileriCek(lat, lon);
-            namazGetir(lat, lon);
-            document.getElementById("durum").innerText = "Konum Güncel";
-        }, () => {
-            document.getElementById("durum").innerText = "Konum İzni Yok";
+            verileriGetir(lat, lon);
+            namazCek(lat, lon);
         });
     }
 
-    function namazGetir(lat, lon) {
+    function namazCek(lat, lon) {
         fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=13`)
         .then(r => r.json()).then(d => {
             const t = d.data.timings;
-            document.getElementById("namaz").innerHTML = 
-                `<span>İmsak ${t.Fajr}</span> <span>Öğle ${t.Dhuhr}</span> <span>İkindi ${t.Asr}</span> <span>Akşam ${t.Maghrib}</span> <span>Yatsı ${t.Isha}</span>`;
+            document.getElementById("namaz-vakitleri").innerHTML = `<span>İmsak ${t.Fajr}</span><span>Öğle ${t.Dhuhr}</span><span>İkindi ${t.Asr}</span><span>Akşam ${t.Maghrib}</span><span>Yatsı ${t.Isha}</span>`;
         });
     }
 
-    function bolgedeAra() {
+    function elleAra() {
         const center = map.getCenter();
-        document.getElementById("btn-ara-main").style.display = "none";
-        document.getElementById("durum").innerText = "Aranıyor...";
-        verileriCek(center.lat, center.lng);
+        document.getElementById("yuzen-ara-btn").style.display = "none";
+        verileriGetir(center.lat, center.lng);
     }
 
-    function verileriCek(lat, lon) {
-        const q = `[out:json][timeout:25];(node["amenity"="place_of_worship"]["religion"="muslim"](around:2500,${lat},${lon});way["amenity"="place_of_worship"]["religion"="muslim"](around:2500,${lat},${lon}););out center;`;
+    function verileriGetir(lat, lon) {
+        const q = `[out:json][timeout:25];(node["amenity"="place_of_worship"]["religion"="muslim"](around:3000,${lat},${lon});way["amenity"="place_of_worship"]["religion"="muslim"](around:3000,${lat},${lon}););out center;`;
 
         fetch("https://overpass-api.de/api/interpreter", {
             method: "POST",
@@ -139,38 +112,35 @@
         })
         .then(r => r.json())
         .then(data => {
-            markerGrubu.clearLayers();
-            let cSay = 0, gSay = 0, html = "";
+            markers.clearLayers();
+            let c = 0, g = 0, html = "";
 
             data.elements.forEach(el => {
                 const la = el.lat || el.center.lat;
                 const lo = el.lon || el.center.lng;
-                const isim = el.tags.name;
-                
-                if (isim) {
-                    cSay++;
-                    L.marker([la, lo]).addTo(markerGrubu).bindPopup(`<b>${isim}</b>`);
-                    html += `<li><span>${isim}</span> <a href="https://www.google.com/maps?q=${la},${lo}" target="_blank" class="yol-btn">GİT</a></li>`;
+                const ad = el.tags.name;
+
+                if (ad) {
+                    c++;
+                    L.marker([la, lo]).addTo(markers).bindPopup(`<b>${ad}</b>`);
+                    html += `<li>${ad} <a href="https://www.google.com/maps/dir/?api=1&destination=${la},${lo}" target="_blank" class="btn-git">GİT</a></li>`;
                 } else {
-                    gSay++;
-                    const icon = L.divIcon({ className: 'gorev-marker-css', iconSize: [12, 12] });
-                    L.marker([la, lo], {icon: icon}).addTo(markerGrubu).bindPopup(`<b>İsimsiz Cami</b><br><button onclick="window.open('https://www.openstreetmap.org/edit?node=${el.id}')" class="yol-btn gorev-btn">İSİM EKLE</button>`);
-                    html += `<li style="background:#fffefe"><span>İsimsiz Cami</span> <button onclick="map.setView([${la},${lo}], 18)" class="yol-btn gorev-btn">BUL</button></li>`;
+                    g++;
+                    const icon = L.divIcon({ className: 'pulse-marker', iconSize: [12, 12] });
+                    L.marker([la, lo], {icon: icon}).addTo(markers).bindPopup(`<b>İsimsiz Cami</b><br><button onclick="window.open('https://www.openstreetmap.org/edit?node=${el.id}')" class="btn-gorev">İSİM EKLE</button>`);
+                    html += `<li style="color:red">İsimsiz Cami <button onclick="map.setView([${la},${lo}], 18)" class="btn-gorev">BUL</button></li>`;
                 }
             });
-            document.getElementById("sonuclar").innerHTML = html || "<li>Sonuç bulunamadı.</li>";
-            document.getElementById("sayac").innerText = cSay;
-            document.getElementById("gorev-sayac").innerText = gSay;
-            document.getElementById("durum").innerText = "Sonuçlar Listelendi";
-        })
-        .catch(() => {
-            document.getElementById("durum").innerText = "Hata! Tekrar deneyin.";
+
+            document.getElementById("sonuclar").innerHTML = html || "<li>Bu bölgede cami bulunamadı.</li>";
+            document.getElementById("c-say").innerText = c;
+            document.getElementById("g-say").innerText = g;
         });
     }
 
-    // Harita hareket ettiğinde butonu göster
+    // Butonu sadece harita hareket ettiğinde göster
     map.on('moveend', () => {
-        document.getElementById("btn-ara-main").style.display = "block";
+        document.getElementById("yuzen-ara-btn").style.display = "block";
     });
 </script>
 
