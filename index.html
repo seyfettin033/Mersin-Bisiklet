@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Türkiye Camii Rehberi</title>
+<title>Türkiye Camii Rehberi - Veri Geliştirme</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -25,17 +25,14 @@ header h1 {
   font-size:18px;
   color:#14532d;
 }
-header small { color:#6b7280; }
-
 .etiket {
   background:#ecfdf5;
   color:#065f46;
   text-align:center;
-  font-size:12px;
+  font-size:11px;
   padding:6px;
   border-bottom:1px solid #d1fae5;
 }
-
 .filters {
   padding:10px;
   background:#fff;
@@ -48,7 +45,6 @@ select {
   border:1px solid #d1d5db;
   font-size:14px;
 }
-
 #sayac {
   background:#fff;
   padding:10px;
@@ -58,25 +54,35 @@ select {
   color:#14532d;
   border-bottom:1px solid #e5e7eb;
 }
-
 #map { height: calc(100vh - 210px); }
 
-/* Popup */
-.popup { font-size:14px; }
-.popup b { color:#14532d; }
-.popup a {
+/* Popup Tasarımı */
+.popup-container { font-size:13px; min-width:160px; }
+.popup-container b { color:#b91c1c; display:block; margin-bottom:5px; }
+.btn {
   display:block;
   text-align:center;
   padding:8px;
-  margin-top:6px;
-  border-radius:6px;
+  margin-top:5px;
+  border-radius:4px;
   text-decoration:none;
   font-weight:600;
-  font-size:13px;
+  color:#fff;
+  border:none;
+  cursor:pointer;
+  width: 100%;
+  box-sizing: border-box;
 }
-.osm { background:#166534; color:#fff; }
-.google { background:#fde047; color:#000; }
-.diyanet { background:#1e3a8a; color:#fff; }
+.google { background:#ea4335; }
+.yandex { background:#ffcc00; color:#000; }
+.diyanet { background:#003399; }
+.osm { background:#7dbd00; margin-top:10px; }
+.copy-btn { 
+  background:#f3f4f6; 
+  color:#374151; 
+  font-size:11px; 
+  border:1px solid #d1d5db;
+}
 </style>
 </head>
 
@@ -84,74 +90,59 @@ select {
 
 <header>
   <h1>🕌 Türkiye Camii Rehberi</h1>
-  <small>İsimsiz Camiler – OSM Düzeltme Haritası</small>
+  <small>Veri Geliştirme ve İsimlendirme Paneli</small>
 </header>
 
 <div class="etiket">
-ℹ️ Bu proje OpenStreetMap verilerinin doğruluğunu artırmak amacıyla, tamamen toplumsal fayda için hazırlanmıştır.
+ℹ️ Doğru ismi teyit etmek için Google, Yandex ve Diyanet verilerini çapraz kontrol ediniz.
 </div>
 
 <div class="filters">
   <select id="il">
-    <option value="">İl seçiniz</option>
+    <option value="">İl seçiniz...</option>
   </select>
 </div>
 
-<div id="sayac">Henüz il seçilmedi</div>
+<div id="sayac">Lütfen bir il seçerek çalışmaya başlayın</div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-// 81 İl (otomatik yükleme)
-const iller = [
-"Adana","Adıyaman","Afyonkarahisar","Ağrı","Amasya","Ankara","Antalya","Artvin",
-"Aydın","Balıkesir","Bilecik","Bingöl","Bitlis","Bolu","Burdur","Bursa",
-"Çanakkale","Çankırı","Çorum","Denizli","Diyarbakır","Edirne","Elazığ",
-"Erzincan","Erzurum","Eskişehir","Gaziantep","Giresun","Gümüşhane","Hakkari",
-"Hatay","Isparta","Mersin","İstanbul","İzmir","Kars","Kastamonu","Kayseri",
-"Kırklareli","Kırşehir","Kocaeli","Konya","Kütahya","Malatya","Manisa",
-"Kahramanmaraş","Mardin","Muğla","Muş","Nevşehir","Niğde","Ordu","Rize",
-"Sakarya","Samsun","Siirt","Sinop","Sivas","Tekirdağ","Tokat","Trabzon",
-"Tunceli","Şanlıurfa","Uşak","Van","Yozgat","Zonguldak","Aksaray","Bayburt",
-"Karaman","Kırıkkale","Batman","Şırnak","Bartın","Ardahan","Iğdır","Yalova",
-"Karabük","Kilis","Osmaniye","Düzce"
-];
+const iller = ["Adana","Adıyaman","Afyonkarahisar","Ağrı","Amasya","Ankara","Antalya","Artvin","Aydın","Balıkesir","Bilecik","Bingöl","Bitlis","Bolu","Burdur","Bursa","Çanakkale","Çankırı","Çorum","Denizli","Diyarbakır","Edirne","Elazığ","Erzincan","Erzurum","Eskişehir","Gaziantep","Giresun","Gümüşhane","Hakkari","Hatay","Isparta","Mersin","İstanbul","İzmir","Kars","Kastamonu","Kayseri","Kırklareli","Kırşehir","Kocaeli","Konya","Kütahya","Malatya","Manisa","Kahramanmaraş","Mardin","Muğla","Muş","Nevşehir","Niğde","Ordu","Rize","Sakarya","Samsun","Siirt","Sinop","Sivas","Tekirdağ","Tokat","Trabzon","Tunceli","Şanlıurfa","Uşak","Van","Yozgat","Zonguldak","Aksaray","Bayburt","Karaman","Kırıkkale","Batman","Şırnak","Bartın","Ardahan","Iğdır","Yalova","Karabük","Kilis","Osmaniye","Düzce"];
 
 const ilSelect = document.getElementById("il");
-iller.forEach(il => {
+iller.sort((a, b) => a.localeCompare('tr')).forEach(il => {
   const o = document.createElement("option");
-  o.value = il;
-  o.textContent = il;
+  o.value = il; o.textContent = il;
   ilSelect.appendChild(o);
 });
 
-// Harita
 const map = L.map('map').setView([39,35], 6);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom:19,
-  attribution:'© OpenStreetMap'
-}).addTo(map);
-
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
 const layer = L.layerGroup().addTo(map);
 
-// İl seçimi
+// Koordinat kopyalama fonksiyonu
+function copyCoords(coords) {
+  navigator.clipboard.writeText(coords);
+  alert("Koordinat kopyalandı: " + coords);
+}
+
 ilSelect.addEventListener("change", function() {
   const il = this.value;
   if (!il) return;
 
   layer.clearLayers();
-  document.getElementById("sayac").innerHTML = il + " – Yükleniyor...";
+  document.getElementById("sayac").innerHTML = "⌛ " + il + " verileri çekiliyor...";
 
   const query = `
-  [out:json][timeout:40];
+  [out:json][timeout:50];
   area["name"="${il}"]["admin_level"="4"]->.a;
   (
     node["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](area.a);
     way["amenity"="place_of_worship"]["religion"="muslim"]["name"!~"."](area.a);
   );
-  out center;
-  `;
+  out center;`;
 
   fetch("https://overpass-api.de/api/interpreter", {
     method:"POST",
@@ -160,51 +151,47 @@ ilSelect.addEventListener("change", function() {
   .then(r=>r.json())
   .then(data=>{
     const adet = data.elements.length;
-    const sayac = document.getElementById("sayac");
-
-    if (adet === 0) {
-      sayac.innerHTML = il + " – İsimsiz cami bulunamadı";
-      return;
-    }
-
-    sayac.innerHTML = il + " – <b>" + adet + "</b> isimsiz cami bulundu";
+    document.getElementById("sayac").innerHTML = il + " – <b>" + adet + "</b> isimsiz cami bulundu";
 
     const bounds = [];
     data.elements.forEach(el => {
       const lat = el.lat || el.center.lat;
       const lon = el.lon || el.center.lon;
+      const coords = `${lat},${lon}`;
       bounds.push([lat,lon]);
 
-      const popup = `
-      <div class="popup">
+      const popupHtml = `
+      <div class="popup-container">
         <b>❗ İsimsiz Cami</b>
-
-        <a class="google" target="_blank"
-           href="https://www.google.com/maps/search/cami/@${lat},${lon},19z">
-           🔍 Google’da Kontrol
-        </a>
-
-        <a class="diyanet" target="_blank"
-           href="https://camiler.diyanet.gov.tr">
-           🕌 Diyanet’te Sorgula
-        </a>
-
-        <a class="osm" target="_blank"
-           href="https://www.openstreetmap.org/edit?editor=id#map=19/${lat}/${lon}">
-           ✍️ OSM'de İsim Gir
-        </a>
+        
+        <button class="btn copy-btn" onclick="copyCoords('${coords}')">📋 Koordinatı Kopyala</button>
+        
+        <a class="btn google" target="_blank" href="https://www.google.com/maps/search/?api=1&query=${coords}">🔍 Google Haritalar</a>
+        
+        <a class="btn yandex" target="_blank" href="https://yandex.com.tr/harita/?ll=${lon}%2C${lat}&z=18&l=stv%2Csta">🚗 Yandex Panorama</a>
+        
+        <a class="btn diyanet" target="_blank" href="https://camiler.diyanet.gov.tr">🕌 Diyanet Manuel</a>
+        
+        <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
+        
+        <a class="btn osm" target="_blank" href="https://www.openstreetmap.org/edit?editor=id#map=19/${lat}/${lon}">✍️ OSM'de İsim Gir</a>
       </div>`;
 
-      L.circleMarker([lat,lon], {
-        radius:6,
+      const marker = L.circleMarker([lat,lon], {
+        radius:7,
         color:"#14532d",
         weight:2,
         fillColor:"#22c55e",
-        fillOpacity:0.85
-      }).addTo(layer).bindPopup(popup);
+        fillOpacity:0.9
+      }).addTo(layer).bindPopup(popupHtml);
+
+      // Tıklanan marker'ın rengini değiştir (takip için)
+      marker.on('click', function() {
+        this.setStyle({ fillColor: '#3b82f6', color: '#1d4ed8' }); 
+      });
     });
 
-    map.fitBounds(bounds, {padding:[30,30]});
+    if(bounds.length > 0) map.fitBounds(bounds, {padding:[30,30]});
   });
 });
 </script>
